@@ -19,7 +19,6 @@ Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** ba
 
 ### Other
 - CORS
-- (Optional) Shared types/utilities
 
 ---
 
