@@ -4,9 +4,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server",
-    "dev": "nodemon server"
+  "dev": "nodemon server",
+  "start": "node server",
+  "test": "jest --ci --coverage"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +17,9 @@
     "express": "^5.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "nodemon": "^3.1.10",
+    "ts-jest": "^29.4.4"
   }
 }

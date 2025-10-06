@@ -1,4 +1,4 @@
-name: CI/CD-Pipeline
+name: primitive-ci
 
 on:
   push:
@@ -8,60 +8,72 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  APP_DIR: ai-image-captioner 
+
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node 20 (cache both apps)
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable npm cache (client)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
+          cache-dependency-path: ${{ env.APP_DIR }}/client/package-lock.json
 
       - name: Install (client)
-        working-directory: client
-        run: npm ci
+        working-directory: ${{ env.APP_DIR }}/client
+        run: npm ci || npm install
 
       - name: Lint (client)
-        working-directory: client
+        working-directory: ${{ env.APP_DIR }}/client
         run: npm run lint --if-present
 
       - name: Test (client) with coverage (if present)
-        working-directory: client
+        working-directory: ${{ env.APP_DIR }}/client
         run: npm test -- --coverage --run --watch=false || echo "no client tests"
 
       - name: Build (client)
-        working-directory: client
+        working-directory: ${{ env.APP_DIR }}/client
         run: npm run build --if-present
 
+      - name: Enable npm cache (server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/server/package-lock.json
+
       - name: Install (server)
-        working-directory: server
-        run: npm ci
+        working-directory: ${{ env.APP_DIR }}/server
+        run: npm ci || npm install
 
       - name: Lint (server)
-        working-directory: server
+        working-directory: ${{ env.APP_DIR }}/server
         run: npm run lint --if-present
 
       - name: Test (server) with coverage (if present)
-        working-directory: server
+        working-directory: ${{ env.APP_DIR }}/server
         run: npm test -- --coverage --ci || echo "no server tests"
 
       - name: Build (server)
-        working-directory: server
+        working-directory: ${{ env.APP_DIR }}/server
         run: npm run build --if-present
 
-      # ----- Artifacts (optional but handy for debugging) -----
       - name: Upload client dist
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: client-dist
-          path: client/dist
+          path: ${{ env.APP_DIR }}/client/dist
 
       - name: Upload coverage
         if: always()
@@ -69,16 +81,5 @@ jobs:
         with:
           name: coverage
           path: |
-            client/coverage
-            server/coverage
-
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }} 
-          files: |
-            client/coverage/lcov.info
-            server/coverage/lcov.info
-          flags: client,server
-          fail_ci_if_error: false
+            ${{ env.APP_DIR }}/client/coverage
+            ${{ env.APP_DIR }}/server/coverage
