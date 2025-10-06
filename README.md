@@ -13,12 +13,16 @@ Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** ba
 - Axios
 
 ### Backend
-- Node.js
-- Express
+- Node.js + Express.js
+- Auth.js
+- Prisma ORM
 - Nodemon (dev)
 
-### Other
-- CORS
+### Database & Storage
+- PostgreSQL
+- Cloud Object Storage (AWS/Supabase/Cloudflare)
+- Prisma Adapter 
+
 
 ---
 
