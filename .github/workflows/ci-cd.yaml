@@ -1,4 +1,4 @@
-name: primitive-ci
+name: ci-cd pipeline
 
 on:
   push:
@@ -60,13 +60,24 @@ jobs:
         working-directory: ${{ env.APP_DIR }}/server
         run: npm run lint --if-present
 
-      - name: Test (server) with coverage (if present)
+      - name: Test (server) with coverage
         working-directory: ${{ env.APP_DIR }}/server
         run: npm test -- --coverage --ci || echo "no server tests"
 
       - name: Build (server)
         working-directory: ${{ env.APP_DIR }}/server
         run: npm run build --if-present
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} 
+          files: |
+            ${{ env.APP_DIR }}/client/coverage/lcov.info
+            ${{ env.APP_DIR }}/server/coverage/lcov.info
+          flags: client,server
+          fail_ci_if_error: false
 
       - name: Upload client dist
         if: always()
