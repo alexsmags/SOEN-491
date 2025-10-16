@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
+import EditorPage from "./pages/EditorPage";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -14,6 +15,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
         {/* Workspace page */}
         <Route path="/workspace" element={<WorkspacePage />} />
+
+        {/* Editor page */}
+        <Route path="/editor" element={<EditorPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
