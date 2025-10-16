@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Settings, LogIn, UserPlus, LogOut } from "lucide-react";
+import { User, Settings, LogIn, UserPlus, LogOut, type LucideIcon } from "lucide-react";
 
 type UserMenuProps = {
   isAuthenticated?: boolean;
@@ -50,7 +50,7 @@ export default function UserMenu({
     children,
     onClick,
   }: {
-    icon: any;
+    icon: LucideIcon;
     children: React.ReactNode;
     onClick?: () => void;
   }) => (
