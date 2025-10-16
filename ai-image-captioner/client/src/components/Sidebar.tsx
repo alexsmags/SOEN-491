@@ -4,35 +4,44 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import logo from "../assets/CaptoPic_Logo.png";
+import { Link, useLocation } from "react-router-dom";
 
 type NavItemProps = {
   label: string;
-  active?: boolean;
   Icon: LucideIcon;
+  to: string;
   collapsed?: boolean;
 };
 
-const NavItem = ({ label, active = false, Icon, collapsed }: NavItemProps) => (
-  <button
-    className={[
-      "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
-      active ? "bg-white/10 text-white shadow" : "text-white/70 hover:text-white hover:bg-white/5",
-      collapsed ? "justify-center" : "",
-    ].join(" ")}
-    title={collapsed ? label : undefined}
-  >
-    <Icon size={18} className="shrink-0 opacity-90" />
-    <span className={collapsed ? "hidden" : "truncate"}>{label}</span>
-  </button>
-);
+const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
+  const { pathname } = useLocation();
+  const active = pathname === to;
 
-const links: Array<{ label: string; Icon: LucideIcon; active?: boolean }> = [
-  { label: "Homepage", Icon: Home, active: true },
-  { label: "Upload & Generate", Icon: Upload },
-  { label: "Editor", Icon: Edit3 },
-  { label: "My Gallery", Icon: Images },
-  { label: "Share", Icon: Share2 },
-  { label: "Product Mode", Icon: Package },
+  return (
+    <Link
+      to={to}
+      className={[
+        "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
+        active
+          ? "bg-white/10 text-white shadow"
+          : "text-white/70 hover:text-white hover:bg-white/5",
+        collapsed ? "justify-center" : "",
+      ].join(" ")}
+      title={collapsed ? label : undefined}
+    >
+      <Icon size={18} className="shrink-0 opacity-90" />
+      <span className={collapsed ? "hidden" : "truncate"}>{label}</span>
+    </Link>
+  );
+};
+
+const links: Array<{ label: string; Icon: LucideIcon; to: string }> = [
+  { label: "Homepage", Icon: Home, to: "/" },
+  { label: "Upload & Generate", Icon: Upload, to: "/upload" },
+  { label: "Editor", Icon: Edit3, to: "/editor" },
+  { label: "My Workspace", Icon: Images, to: "/workspace" },
+  { label: "Share", Icon: Share2, to: "/share" },
+  { label: "Product Mode", Icon: Package, to: "/product" },
 ];
 
 type SidebarProps = {
@@ -114,12 +123,12 @@ export default function Sidebar({ mode, open, collapsed, onToggle, onClose }: Si
 
         {/* Navigation */}
         <nav className="space-y-1 mt-1">
-          {links.map(({ label, Icon, active }) => (
+          {links.map(({ label, Icon, to }) => (
             <NavItem
               key={label}
               label={label}
               Icon={Icon}
-              active={active}
+              to={to}
               collapsed={isOverlay ? false : collapsed}
             />
           ))}
