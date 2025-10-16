@@ -64,7 +64,7 @@ export default function WorkspacePage() {
   return (
     <div
       className="bg-[#0C0F14] text-white overflow-x-hidden"
-      style={{ ["--sidebar-w" as any]: sidebarWidth }}
+      style={{ ["--sidebar-w" as string]: sidebarWidth }}
     >
       {/* Sidebar */}
       <Sidebar
