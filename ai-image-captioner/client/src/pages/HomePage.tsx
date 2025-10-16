@@ -69,7 +69,7 @@ export default function HomePage() {
   return (
     <div
       className="bg-[#0C0F14] text-white overflow-x-hidden"
-      style={{ ["--sidebar-w" as any]: sidebarWidth }}
+      style={{ "--sidebar-w": sidebarWidth } as React.CSSProperties}
     >
       {/* Sidebar */}
       <Sidebar
