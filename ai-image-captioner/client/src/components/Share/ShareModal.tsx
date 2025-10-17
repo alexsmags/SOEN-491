@@ -6,8 +6,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   targets: ShareTarget[];
-  onShare: (id: string) => void;
-};
+  onShare: (id: ShareTarget["id"]) => void;
+}
 
 export function ShareModal({ open, onClose, targets, onShare }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);

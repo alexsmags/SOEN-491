@@ -7,7 +7,7 @@ import { PreviewWithShare } from "../components/Share/PreviewWithShare";
 import { ShareModal } from "../components/Share/ShareModal";
 import { buildShareUrl } from "../lib/shareUrls";
 import { SHARE_TARGETS } from "../data/shareTargets";
-import type { SharePayload } from "../data/shareTargets";
+import type { ShareTarget, SharePayload } from "../data/shareTargets";
 
 type View = "mobile" | "tablet" | "desktop";
 function useView(): View {
@@ -75,27 +75,35 @@ export default function SharePage() {
     [selectedImage]
   );
 
-  const onShareTo = (id: string) => {
-    const target = SHARE_TARGETS.find((t) => t.id === id);
-    if (!target) return;
+const onShareTo = (id: ShareTarget["id"]) => {
+  const target = SHARE_TARGETS.find((t) => t.id === id);
+  if (!target) return;
 
-    if (id === "system" && (navigator as any).share) {
-      (navigator as any)
-        .share({ title: "CaptoPic", text: payload.text, url: payload.url })
-        .catch(() => {});
-      return;
-    }
-    const href = buildShareUrl(target.id as any, payload);
-    if (!href) return;
-    const w = 680, h = 560;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    window.open(
-      href,
-      "_blank",
-      `popup=yes,width=${w},height=${h},left=${left},top=${top}`
-    );
-  };
+  // Browser share API
+  if (id === "system" && navigator.share) {
+    navigator
+      .share({
+        title: "CaptoPic",
+        text: payload.text,
+        url: payload.url,
+      })
+      .catch(() => {});
+    return;
+  }
+
+  const href = buildShareUrl(target.id, payload);
+  if (!href) return;
+
+  const w = 680;
+  const h = 560;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top = window.screenY + (window.outerHeight - h) / 2;
+  window.open(
+    href,
+    "_blank",
+    `popup=yes,width=${w},height=${h},left=${left},top=${top}`
+  );
+};
 
   return (
     <div

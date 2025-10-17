@@ -1,4 +1,4 @@
-// src/data/shareTargets.tsx
+import ShareSVG from "../icons/ShareSVG";
 import {
   FaTwitter,
   FaFacebookF,
@@ -8,16 +8,6 @@ import {
   FaEnvelope,
   FaWhatsapp,
 } from "react-icons/fa";
-
-// define as a simple SVG-returning function, not a React component
-export const ShareSVG = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" className="opacity-95">
-    <path
-      fill="currentColor"
-      d="M18 16a3 3 0 0 0-2.356 1.154L8.91 13.91a3.1 3.1 0 0 0 0-3.82l6.734-3.245A3 3 0 1 0 15 5a3 3 0 0 0 .09.722L8.356 8.967a3 3 0 1 0 0 6.066l6.734 3.245A3 3 0 1 0 18 16Z"
-    />
-  </svg>
-);
 
 export type SharePayload = {
   url: string;
