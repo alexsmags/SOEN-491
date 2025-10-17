@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
 import EditorPage from "./pages/EditorPage";
+import SharePage from "./pages/SharePage";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -18,6 +19,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
         {/* Editor page */}
         <Route path="/editor" element={<EditorPage />} />
+
+        {/* Share page */}
+        <Route path="/share" element={<SharePage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

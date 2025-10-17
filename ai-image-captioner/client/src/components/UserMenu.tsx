@@ -87,7 +87,7 @@ export default function UserMenu({
         ref={panelRef}
         role="menu"
         aria-label="User menu"
-        className={`absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-black shadow-xl shadow-black/30 p-2
+        className={`absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#1e2128] shadow-xl shadow-black/30 p-2
                     transition transform origin-top-right
                     ${open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95"}`}
       >

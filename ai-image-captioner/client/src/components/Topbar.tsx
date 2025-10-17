@@ -38,7 +38,7 @@ export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: Topbar
     <header
       className={[
         "fixed inset-x-0 top-0",
-        "z-40 bg-black/95 border-b border-white/10 pt-[env(safe-area-inset-top)]",
+        "z-40 bg-[#1e2128] border-b border-white/10 pt-[env(safe-area-inset-top)]",
         "transition-[padding-left] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
       ].join(" ")}
       style={{
