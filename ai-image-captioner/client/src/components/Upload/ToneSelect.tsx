@@ -19,13 +19,18 @@ const options: { label: string; value: ToneOption }[] = [
 ];
 
 export default function ToneSelect({ value, onChange }: Props) {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value as ToneOption;
+    onChange(val);
+  };
+
   return (
     <div>
       <label className="text-sm text-white/70 block mb-2">Tone</label>
       <div className="relative">
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value as any)}
+          onChange={handleChange}
           className="w-full appearance-none rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/20"
         >
           {options.map((o) => (
