@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
 import EditorPage from "./pages/EditorPage";
 import SharePage from "./pages/SharePage";
+import UploadPage from "./pages/UploadPage";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -22,6 +23,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
         {/* Share page */}
         <Route path="/share" element={<SharePage />} />
+
+        {/* Upload page */}
+        <Route path="/upload" element={<UploadPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
