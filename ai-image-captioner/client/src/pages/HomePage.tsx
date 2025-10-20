@@ -97,7 +97,7 @@ export default function HomePage() {
           onMobileToggle={() => setMobileOpen((o) => !o)}
         />
 
-        <main className="flex-grow pt-14 px-6 md:px-10 pb-32">
+        <main className="flex-grow pt-14 px-6 md:px-10 pb-32 black-bg">
           {/* Hero */}
           <section className="mt-6 md:mt-10 rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
             <div className="grid md:grid-cols-2 gap-8 items-center">

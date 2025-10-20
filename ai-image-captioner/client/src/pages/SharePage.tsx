@@ -79,7 +79,6 @@ const onShareTo = (id: ShareTarget["id"]) => {
   const target = SHARE_TARGETS.find((t) => t.id === id);
   if (!target) return;
 
-  // Browser share API
   if (id === "system" && navigator.share) {
     navigator
       .share({
