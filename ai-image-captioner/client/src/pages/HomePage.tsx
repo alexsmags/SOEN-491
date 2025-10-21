@@ -6,8 +6,10 @@ import FeatureCard from "../components/HomePage/FeatureCard";
 import TestimonialCard from "../components/HomePage/TestimonialCard";
 import caption_image from "../assets/caption_image.png";
 import { FEATURES, TESTIMONIALS } from "../data/homepageContent";
+import { useSession } from "../session";
 
 type View = "mobile" | "tablet" | "desktop";
+
 function useView(): View {
   const getView = () => {
     if (typeof window === "undefined") return "desktop" as View;
@@ -33,9 +35,84 @@ function useView(): View {
   return view;
 }
 
+function SkeletonLine({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-white/10 rounded ${className}`} />;
+}
+
+function SkeletonHero() {
+  return (
+    <section className="rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
+      <div className="grid md:grid-cols-2 gap-8 items-center">
+        <div>
+          <SkeletonLine className="h-10 md:h-14 w-4/5" />
+          <SkeletonLine className="h-10 md:h-14 w-3/5 mt-3" />
+          <SkeletonLine className="h-10 md:h-14 w-2/5 mt-3" />
+          <SkeletonLine className="h-4 w-full mt-6" />
+          <SkeletonLine className="h-4 w-5/6 mt-2" />
+          <SkeletonLine className="h-10 w-44 mt-6 rounded-xl" />
+        </div>
+        <div className="aspect-[4/3] rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center">
+          <SkeletonLine className="h-full w-full rounded-lg" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SkeletonFeatures() {
+  return (
+    <section className="mt-10">
+      <div className="text-center mb-8">
+        <SkeletonLine className="h-8 md:h-10 w-2/3 mx-auto" />
+        <SkeletonLine className="h-4 w-5/6 mx-auto mt-3" />
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-white/[0.04] border border-white/10 p-5"
+          >
+            <SkeletonLine className="h-10 w-10 rounded-xl" />
+            <SkeletonLine className="h-5 w-3/4 mt-4" />
+            <SkeletonLine className="h-4 w-full mt-2" />
+            <SkeletonLine className="h-4 w-5/6 mt-2" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SkeletonTestimonials() {
+  return (
+    <section className="mt-16 rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
+      <SkeletonLine className="h-8 md:h-10 w-1/2 mx-auto" />
+      <div className="mt-8 grid md:grid-cols-2 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-white/[0.03] border border-white/10 p-6"
+          >
+            <div className="flex items-center gap-3">
+              <SkeletonLine className="h-10 w-10 rounded-full" />
+              <div className="flex-1">
+                <SkeletonLine className="h-4 w-1/2" />
+                <SkeletonLine className="h-3 w-1/3 mt-2" />
+              </div>
+            </div>
+            <SkeletonLine className="h-4 w-full mt-5" />
+            <SkeletonLine className="h-4 w-11/12 mt-2" />
+            <SkeletonLine className="h-4 w-10/12 mt-2" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+/** ---------------------------------------- */
+
 export default function HomePage() {
   const view = useView();
-
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     const saved =
       typeof window !== "undefined"
@@ -66,6 +143,10 @@ export default function HomePage() {
 
   const isOverlay = view === "mobile";
 
+  const { user, loading } = useSession();
+  const isAuthenticated = !!user;
+  const userName = user?.name ?? user?.email?.split("@")[0] ?? undefined;
+
   return (
     <div
       className="bg-[#0C0F14] text-white overflow-x-hidden"
@@ -82,7 +163,7 @@ export default function HomePage() {
         onClose={() => setMobileOpen(false)}
       />
 
-      {/* Content wrapper */}
+      {/* Main content wrapper */}
       <div
         className="
           min-h-screen flex flex-col
@@ -98,79 +179,100 @@ export default function HomePage() {
         />
 
         <main className="flex-grow pt-14 px-6 md:px-10 pb-32 black-bg">
-          {/* Hero */}
-          <section className="mt-6 md:mt-10 rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
-            <div className="grid md:grid-cols-2 gap-8 items-center">
-              <div>
-                <h1 className="text-3xl md:text-5xl font-extrabold leading-tight tracking-tight">
-                  Unleash Your <br /> Images with <br /> Perfect <br />{" "}
-                  AI-Powered <br /> Captions
+          {loading ? (
+            <>
+              {/* Optional: placeholder for greeting spacing */}
+              <SkeletonLine className="h-10 w-60 mt-10 mb-4 rounded" />
+              <SkeletonHero />
+              <SkeletonFeatures />
+              <SkeletonTestimonials />
+            </>
+          ) : (
+            <>
+              {isAuthenticated && (
+                <h1 className="text-5xl md:text-5xl font-extrabold leading-tight tracking-tight mb-2 mt-10">
+                  Hello, {userName}
                 </h1>
-                <p className="mt-4 text-sm md:text-base text-white/70 max-w-prose">
-                  Generate engaging, tailor-made captions in seconds for all
-                  your social media, marketing, and product needs. Boost your
-                  engagement and tell your story effortlessly.
-                </p>
-                <button
-                  className="mt-6 rounded-xl px-4 py-2 border border-white/15 transition shadow-sm"
-                  style={{ backgroundColor: "#364881" }}
-                >
-                  Get Started Now
-                </button>
-              </div>
+              )}
 
-              <div className="aspect-[4/3] rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center">
-                <img
-                  src={caption_image}
-                  alt="Phone showcasing captions"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              </div>
-            </div>
-          </section>
+              {/* Hero section */}
+              <section className="rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div>
+                    <h1 className="text-3xl md:text-5xl font-extrabold leading-tight tracking-tight">
+                      Unleash Your <br /> Images with <br /> Perfect <br />{" "}
+                      AI-Powered <br /> Captions
+                    </h1>
+                    <p className="mt-4 text-sm md:text-base text-white/70 max-w-prose">
+                      Generate engaging, tailor-made captions in seconds for all
+                      your social media, marketing, and product needs. Boost your
+                      engagement and tell your story effortlessly.
+                    </p>
+                    <button
+                      disabled={loading}
+                      className={`mt-6 rounded-xl px-4 py-2 border border-white/15 transition shadow-sm ${
+                        loading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      style={{ backgroundColor: "#364881" }}
+                    >
+                      {loading ? "Please wait..." : "Get Started Now"}
+                    </button>
+                  </div>
 
-          {/* FEATURES */}
-          <section className="mt-10">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-4xl font-bold">
-                Unlock the Power of AI-Driven Captions
-              </h2>
-              <p className="mt-3 text-white/70 max-w-2xl mx-auto">
-                Elevate your content with engaging, personalized captions
-                crafted instantly for any platform.
-              </p>
-            </div>
+                  <div className="aspect-[4/3] rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center">
+                    <img
+                      src={caption_image}
+                      alt="Phone showcasing captions"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  </div>
+                </div>
+              </section>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {FEATURES.map((f) => (
-                <FeatureCard
-                  key={f.title}
-                  icon={f.icon}
-                  title={f.title}
-                  desc={f.desc}
-                />
-              ))}
-            </div>
-          </section>
+              {/* Features */}
+              <section className="mt-10">
+                <div className="text-center mb-8">
+                  <h2 className="text-2xl md:text-4xl font-bold">
+                    Unlock the Power of AI-Driven Captions
+                  </h2>
+                  <p className="mt-3 text-white/70 max-w-2xl mx-auto">
+                    Elevate your content with engaging, personalized captions
+                    crafted instantly for any platform.
+                  </p>
+                </div>
 
-          {/* Testimonials */}
-          <section className="mt-16 rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
-            <h2 className="text-center text-2xl md:text-4xl font-bold">
-              What Our Users Say
-            </h2>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {FEATURES.map((f) => (
+                    <FeatureCard
+                      key={f.title}
+                      icon={f.icon}
+                      title={f.title}
+                      desc={f.desc}
+                    />
+                  ))}
+                </div>
+              </section>
 
-            <div className="mt-8 grid md:grid-cols-2 gap-6">
-              {TESTIMONIALS.map((t) => (
-                <TestimonialCard
-                  key={t.name}
-                  quote={t.quote}
-                  name={t.name}
-                  title={t.title}
-                  avatarSrc={t.avatarSrc}
-                />
-              ))}
-            </div>
-          </section>
+              {/* Testimonials */}
+              <section className="mt-16 rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-10">
+                <h2 className="text-center text-2xl md:text-4xl font-bold">
+                  What Our Users Say
+                </h2>
+
+                <div className="mt-8 grid md:grid-cols-2 gap-6">
+                  {TESTIMONIALS.map((t) => (
+                    <TestimonialCard
+                      key={t.name}
+                      quote={t.quote}
+                      name={t.name}
+                      title={t.title}
+                      avatarSrc={t.avatarSrc}
+                    />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
         </main>
       </div>
 

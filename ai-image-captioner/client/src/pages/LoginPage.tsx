@@ -1,10 +1,30 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import SocialButtons from "../components/Auth/SocialButtons";
+import axios, { AxiosError } from "axios";
 
-type LocationState = { from?: string } | null;
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
+const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";
+
+const api = axios.create({
+  baseURL: SERVER_URL,
+  withCredentials: true,
+});
+
+function getErrorMessage(e: unknown): string {
+  if (axios.isAxiosError(e)) {
+    const ax = e as AxiosError<{ message?: string }>;
+    return ax.response?.data?.message ?? ax.message ?? "Request failed.";
+  }
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,23 +33,63 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const state = location.state as LocationState;
-  const redirectTo = state?.from || "/upload";
-
   async function onEmailLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
+
+    if (!email || !pw) {
+      setErr("Please enter your email and password.");
+      return;
+    }
+
     setLoading(true);
     try {
-      if (!email || !pw) throw new Error("Please enter your email and password.");
-      await new Promise((r) => setTimeout(r, 800));
-      navigate(redirectTo, { replace: true });
+      const { data: csrf } = await api.get("/auth/csrf");
+
+      const form = new URLSearchParams();
+      form.set("csrfToken", csrf.csrfToken);
+      form.set("email", email.trim().toLowerCase());
+      form.set("password", pw);
+      form.set("callbackUrl", `${CLIENT_URL}/`);
+      form.set("redirect", "false");
+
+      const resp = await api.post("/auth/callback/credentials?json=true", form, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        validateStatus: () => true,
+        maxRedirects: 0,
+      });
+
+      const ok = resp.status < 400 && resp.data?.ok === true && !resp.data?.error;
+
+      if (!ok) {
+        const code: string = resp.data?.error || "CredentialsSignin";
+        if (code === "CredentialsSignin") {
+          setErr("Invalid email or password. Please try again.");
+        } else if (code === "CallbackRouteError") {
+          setErr("Sign-in could not be completed. Please try again.");
+        } else {
+          setErr("Sign-in failed. Please try again.");
+        }
+        setLoading(false);
+        return;
+      }
+
+      window.location.assign(`${CLIENT_URL}/`);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Sign-in failed. Please try again.";
-      setErr(msg);
-    } finally {
+      try {
+        const me = await api.get("/api/me");
+        if (me.status === 200 && me.data?.user) {
+          window.location.assign(`${CLIENT_URL}/`);
+          return;
+        }
+      } catch (inner: unknown) {
+        console.debug("Silent /api/me check failed:", getErrorMessage(inner));
+      }
+
+      setErr(getErrorMessage(e) || "Sign-in failed. Please try again.");
       setLoading(false);
     }
   }
@@ -38,13 +98,11 @@ export default function LoginPage() {
     setErr(null);
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 600));
-      navigate(redirectTo, { replace: true });
+      const url = new URL(`/auth/signin/${provider}`, SERVER_URL);
+      url.searchParams.set("callbackUrl", `${CLIENT_URL}/`);
+      window.location.href = url.toString();
     } catch (e: unknown) {
-      const msg =
-        e instanceof Error ? e.message : `Could not continue with ${provider}.`;
-      setErr(msg);
-    } finally {
+      setErr(getErrorMessage(e) || `Could not continue with ${provider}.`);
       setLoading(false);
     }
   }
@@ -54,6 +112,13 @@ export default function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to generate, edit, and manage AI-powered captions."
     >
+      {/* Error banner */}
+      {err && (
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-300 text-sm">
+          {err}
+        </div>
+      )}
+
       <form onSubmit={onEmailLogin} className="space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm text-white/80">Email</label>
@@ -62,9 +127,10 @@ export default function LoginPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(ev) => setEmail(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="you@example.com"
               autoComplete="email"
             />
@@ -79,9 +145,10 @@ export default function LoginPage() {
               id="password"
               type={showPw ? "text" : "password"}
               value={pw}
-              onChange={(e) => setPw(e.target.value)}
+              onChange={(ev) => setPw(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="••••••••"
               autoComplete="current-password"
             />
@@ -91,30 +158,28 @@ export default function LoginPage() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? "Hide password" : "Show password"}
+              disabled={loading}
             >
               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
         </div>
 
-        {err && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md p-2">
-            {err}
-          </p>
-        )}
-
         <div className="flex items-center justify-between text-xs">
           <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" className="accent-[#364881]" />
+            <input type="checkbox" className="accent-[#364881]" disabled={loading} />
             <span className="text-white/80">Remember me</span>
           </label>
-          <Link to="/forgot-password" className="text-[#8ea2ff] hover:underline">Forgot password?</Link>
+          <Link to="/forgot-password" className="text-[#8ea2ff] hover:underline">
+            Forgot password?
+          </Link>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-11 md:h-12 rounded-xl border border-white/15 shadow-sm disabled:opacity-60"
+          className="w-full h-11 md:h-12 rounded-xl border border-white/15 shadow-sm transition duration-200 ease-in-out disabled:opacity-60
+                     hover:bg-[#4459a0] hover:shadow-md hover:border-white/25"
           style={{ backgroundColor: "#364881" }}
         >
           {loading ? "Signing in…" : "Sign in"}

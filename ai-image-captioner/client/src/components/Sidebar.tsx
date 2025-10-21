@@ -1,10 +1,20 @@
+// src/components/Sidebar.tsx
+
 import {
-  Home, Upload, Edit3, Images, Share2, Package,
-  ChevronLeft, ChevronRight, X
+  Home,
+  Upload,
+  Edit3,
+  Images,
+  Share2,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import logo from "../assets/CaptoPic_Logo.png";
 import { Link, useLocation } from "react-router-dom";
+import { useSession } from "../session/useSession";
 
 type NavItemProps = {
   label: string;
@@ -35,13 +45,21 @@ const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
   );
 };
 
-const links: Array<{ label: string; Icon: LucideIcon; to: string }> = [
+/**
+ * Links that require authentication are hidden when `user` is falsy.
+ */
+const links: Array<{
+  label: string;
+  Icon: LucideIcon;
+  to: string;
+  requiresAuth?: boolean;
+}> = [
   { label: "Homepage", Icon: Home, to: "/" },
-  { label: "Upload & Generate", Icon: Upload, to: "/upload" },
-  { label: "Editor", Icon: Edit3, to: "/editor" },
-  { label: "My Workspace", Icon: Images, to: "/workspace" },
-  { label: "Share", Icon: Share2, to: "/share" },
-  { label: "Product Mode", Icon: Package, to: "/product" },
+  { label: "Upload & Generate", Icon: Upload, to: "/upload", requiresAuth: true }, // now private
+  { label: "Editor", Icon: Edit3, to: "/editor", requiresAuth: true },
+  { label: "My Workspace", Icon: Images, to: "/workspace", requiresAuth: true },
+  { label: "Share", Icon: Share2, to: "/share", requiresAuth: true },
+  { label: "Product Mode", Icon: Package, to: "/product" }, // keep public unless you want it private too
 ];
 
 type SidebarProps = {
@@ -52,9 +70,18 @@ type SidebarProps = {
   onClose: () => void;
 };
 
-export default function Sidebar({ mode, open, collapsed, onToggle, onClose }: SidebarProps) {
+export default function Sidebar({
+  mode,
+  open,
+  collapsed,
+  onToggle,
+  onClose,
+}: SidebarProps) {
   const isOverlay = mode === "overlay";
   const width = isOverlay ? "16rem" : "var(--sidebar-w)";
+  const { user } = useSession();
+
+  const visibleLinks = links.filter((l) => !l.requiresAuth || Boolean(user));
 
   return (
     <>
@@ -123,7 +150,7 @@ export default function Sidebar({ mode, open, collapsed, onToggle, onClose }: Si
 
         {/* Navigation */}
         <nav className="space-y-1 mt-1">
-          {links.map(({ label, Icon, to }) => (
+          {visibleLinks.map(({ label, Icon, to }) => (
             <NavItem
               key={label}
               label={label}

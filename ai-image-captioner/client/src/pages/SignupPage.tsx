@@ -1,8 +1,36 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Mail, Lock, Eye, EyeOff, User, CheckCircle2 } from "lucide-react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import SocialButtons from "../components/Auth/SocialButtons";
+import axios, { AxiosError } from "axios";
+
+type Provider = "google" | "github" | "twitter" | "linkedin";
+type ApiError = { error?: string; message?: string };
+
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
+const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";
+
+const api = axios.create({
+  baseURL: SERVER_URL,
+  withCredentials: true,
+});
+
+function getErrorMessage(e: unknown): string {
+  if (axios.isAxiosError<ApiError>(e)) {
+    return (
+      e.response?.data?.message ??
+      e.message ??
+      "Request failed."
+    );
+  }
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -12,48 +40,92 @@ export default function SignupPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
   const [agree, setAgree] = useState(false);
-
-  const navigate = useNavigate();
 
   async function onEmailSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
+    setOk(null);
+
     if (!agree) return setErr("Please accept the Terms and Privacy Policy.");
     if (pw.length < 8) return setErr("Password must be at least 8 characters.");
     if (pw !== pw2) return setErr("Passwords do not match.");
+
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      navigate("/upload", { replace: true });
+      const cleanEmail = email.trim().toLowerCase();
+
+      await api.post("/api/signup", {
+        name: name.trim(),
+        email: cleanEmail,
+        password: pw,
+      });
+
+      const { data: csrf } = await api.get("/auth/csrf");
+
+      const formEl = document.createElement("form");
+      formEl.method = "POST";
+      formEl.action = `${SERVER_URL}/auth/callback/credentials`;
+      formEl.style.display = "none";
+
+      const add = (k: string, v: string) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = k;
+        input.value = v;
+        formEl.appendChild(input);
+      };
+
+      add("csrfToken", csrf.csrfToken);
+      add("email", cleanEmail);
+      add("password", pw);
+      add("callbackUrl", `${CLIENT_URL}/`);
+
+      document.body.appendChild(formEl);
+      setOk("Account created! Signing you in…");
+      formEl.submit();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Sign-up failed. Please try again.";
-      setErr(msg);
-    } finally {
+      let code: string | undefined;
+      if (axios.isAxiosError<ApiError>(e)) {
+        code = (e as AxiosError<ApiError>).response?.data?.error;
+      }
+
+      if (code === "email_in_use") {
+        setErr("That email is already registered. Try signing in instead.");
+      } else if (code === "invalid_input") {
+        setErr("Please check your details and try again.");
+      } else {
+        setErr(getErrorMessage(e) ?? "Sign-up failed. Please try again.");
+      }
+
       setLoading(false);
     }
   }
 
-  async function onOAuth(provider: "google" | "github" | "twitter" | "linkedin") {
+  function onOAuth(provider: Provider) {
     setErr(null);
+    setOk(null);
     setLoading(true);
-    try {
-      await new Promise((r) => setTimeout(r, 600));
-      navigate("/upload", { replace: true });
-    } catch (e: unknown) {
-      const msg =
-        e instanceof Error ? e.message : `Could not continue with ${provider}.`;
-      setErr(msg);
-    } finally {
-      setLoading(false);
-    }
+    const url = new URL(`/auth/signin/${provider}`, SERVER_URL);
+    url.searchParams.set("callbackUrl", `${CLIENT_URL}/upload`);
+    window.location.href = url.toString();
   }
 
   return (
-    <AuthLayout
-      title="Create your account"
-      subtitle="Join CaptoPic and unleash perfect AI-powered captions."
-    >
+    <AuthLayout title="Create your account" subtitle="Join CaptoPic and unleash perfect AI-powered captions.">
+      {ok && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-300 text-sm">
+          <CheckCircle2 size={16} />
+          <span>{ok}</span>
+        </div>
+      )}
+      {err && (
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-300 text-sm">
+          {err}
+        </div>
+      )}
+
       <form onSubmit={onEmailSignup} className="space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="name" className="text-sm text-white/80">Name</label>
@@ -62,9 +134,10 @@ export default function SignupPage() {
               id="name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(ev) => setName(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="Your name"
               autoComplete="name"
             />
@@ -79,9 +152,10 @@ export default function SignupPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(ev) => setEmail(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="you@example.com"
               autoComplete="email"
             />
@@ -96,9 +170,10 @@ export default function SignupPage() {
               id="password"
               type={showPw ? "text" : "password"}
               value={pw}
-              onChange={(e) => setPw(e.target.value)}
+              onChange={(ev) => setPw(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="At least 8 characters"
               autoComplete="new-password"
               minLength={8}
@@ -109,6 +184,7 @@ export default function SignupPage() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? "Hide password" : "Show password"}
+              disabled={loading}
             >
               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -122,9 +198,10 @@ export default function SignupPage() {
               id="password2"
               type={showPw ? "text" : "password"}
               value={pw2}
-              onChange={(e) => setPw2(e.target.value)}
+              onChange={(ev) => setPw2(ev.target.value)}
               required
-              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20"
+              disabled={loading}
+              className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
               placeholder="Repeat password"
               autoComplete="new-password"
               minLength={8}
@@ -133,18 +210,13 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {err && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md p-2">
-            {err}
-          </p>
-        )}
-
         <label className="mt-2 inline-flex items-center gap-2 text-xs text-white/80 cursor-pointer">
           <input
             type="checkbox"
             className="accent-[#364881]"
             checked={agree}
-            onChange={(e) => setAgree(e.target.checked)}
+            onChange={(ev) => setAgree(ev.target.checked)}
+            disabled={loading}
           />
           I agree to the{" "}
           <Link to="/terms" className="text-[#8ea2ff] hover:underline">Terms</Link> and{" "}
@@ -175,9 +247,7 @@ export default function SignupPage() {
 
       <p className="mt-8 text-center text-sm text-white/70">
         Already have an account?{" "}
-        <Link to="/login" className="text-[#8ea2ff] hover:underline">
-          Sign in
-        </Link>
+        <Link to="/login" className="text-[#8ea2ff] hover:underline">Sign in</Link>
       </p>
     </AuthLayout>
   );
