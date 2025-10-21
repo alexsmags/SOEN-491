@@ -4,6 +4,8 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import SocialButtons from "../components/Auth/SocialButtons";
 
+type LocationState = { from?: string } | null;
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -13,9 +15,10 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo = (location.state as any)?.from || "/upload";
+  const state = location.state as LocationState;
+  const redirectTo = state?.from || "/upload";
 
-  async function onEmailLogin(e: React.FormEvent) {
+  async function onEmailLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
     setLoading(true);
@@ -23,8 +26,9 @@ export default function LoginPage() {
       if (!email || !pw) throw new Error("Please enter your email and password.");
       await new Promise((r) => setTimeout(r, 800));
       navigate(redirectTo, { replace: true });
-    } catch (e: any) {
-      setErr(e.message ?? "Sign-in failed. Please try again.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Sign-in failed. Please try again.";
+      setErr(msg);
     } finally {
       setLoading(false);
     }
@@ -36,8 +40,10 @@ export default function LoginPage() {
     try {
       await new Promise((r) => setTimeout(r, 600));
       navigate(redirectTo, { replace: true });
-    } catch (e: any) {
-      setErr(e.message ?? `Could not continue with ${provider}.`);
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : `Could not continue with ${provider}.`;
+      setErr(msg);
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,7 @@ export default function SignupPage() {
 
   const navigate = useNavigate();
 
-  async function onEmailSignup(e: React.FormEvent) {
+  async function onEmailSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
     if (!agree) return setErr("Please accept the Terms and Privacy Policy.");
@@ -26,8 +26,9 @@ export default function SignupPage() {
     try {
       await new Promise((r) => setTimeout(r, 800));
       navigate("/upload", { replace: true });
-    } catch (e: any) {
-      setErr(e.message ?? "Sign-up failed. Please try again.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Sign-up failed. Please try again.";
+      setErr(msg);
     } finally {
       setLoading(false);
     }
@@ -39,8 +40,10 @@ export default function SignupPage() {
     try {
       await new Promise((r) => setTimeout(r, 600));
       navigate("/upload", { replace: true });
-    } catch (e: any) {
-      setErr(e.message ?? `Could not continue with ${provider}.`);
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : `Could not continue with ${provider}.`;
+      setErr(msg);
     } finally {
       setLoading(false);
     }
