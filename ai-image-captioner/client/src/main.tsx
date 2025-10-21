@@ -6,6 +6,8 @@ import WorkspacePage from "./pages/WorkspacePage";
 import EditorPage from "./pages/EditorPage";
 import SharePage from "./pages/SharePage";
 import UploadPage from "./pages/UploadPage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -26,6 +28,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
         {/* Upload page */}
         <Route path="/upload" element={<UploadPage />} />
+
+        {/* Login page */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Sign-up page */}
+        <Route path="/signup" element={<SignupPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

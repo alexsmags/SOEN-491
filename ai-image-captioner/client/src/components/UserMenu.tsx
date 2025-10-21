@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { User, Settings, LogIn, UserPlus, LogOut, type LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  User,
+  Settings,
+  LogIn,
+  UserPlus,
+  LogOut,
+  type LucideIcon,
+} from "lucide-react";
 
 type UserMenuProps = {
   isAuthenticated?: boolean;
@@ -21,6 +29,7 @@ export default function UserMenu({
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -106,10 +115,22 @@ export default function UserMenu({
           </>
         ) : (
           <>
-            <Item icon={LogIn} onClick={onSignIn}>
+            <Item
+              icon={LogIn}
+              onClick={() => {
+                onSignIn?.();
+                navigate("/login");
+              }}
+            >
               Sign in
             </Item>
-            <Item icon={UserPlus} onClick={onSignUp}>
+            <Item
+              icon={UserPlus}
+              onClick={() => {
+                onSignUp?.();
+                navigate("/signup");
+              }}
+            >
               Create account
             </Item>
           </>
