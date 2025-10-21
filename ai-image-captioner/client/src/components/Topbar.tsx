@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X, Menu } from "lucide-react";
 import UserMenu from "./UserMenu";
+import { useSession } from "../session";
+
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
+const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";
 
 type TopbarProps = {
-  isOverlay: boolean;          // true on mobile
-  mobileOpen: boolean;         // current mobile sidebar state
-  onMobileToggle: () => void;  // open/close mobile sidebar
+  isOverlay: boolean;
+  mobileOpen: boolean;
+  onMobileToggle: () => void;
 };
 
 export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: TopbarProps) {
@@ -14,7 +18,10 @@ export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: Topbar
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Close on outside click / Esc
+  const { user } = useSession();
+  const isAuthenticated = !!user;
+  const email = user?.email
+
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!searchOpen) return;
@@ -34,19 +41,25 @@ export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: Topbar
     };
   }, [searchOpen]);
 
+  function logout() {
+    const url = new URL("/auth/signout", SERVER_URL);
+    url.searchParams.set("callbackUrl", CLIENT_URL);
+    window.location.href = url.toString();
+  }
+
   return (
     <header
       className={[
         "fixed inset-x-0 top-0",
         "z-40 bg-[#1e2128] border-b border-white/10 pt-[env(safe-area-inset-top)]",
-        "transition-[padding-left] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
+        "transition-[padding-left] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]",
       ].join(" ")}
       style={{
         paddingLeft: isOverlay ? undefined : ("var(--sidebar-w)" as unknown as number),
       }}
     >
       <div className="h-12 px-3 md:px-4 flex items-center justify-between">
-        {/* Left: menu button shows only for overlay (mobile) */}
+        {/* Mobile menu button */}
         <div className="flex items-center">
           {isOverlay && (
             <button
@@ -62,6 +75,7 @@ export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: Topbar
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2.5" ref={wrapperRef}>
+          {/* Search field */}
           <div
             className={`relative h-8 overflow-hidden transition-all duration-300 ease-out ${
               searchOpen ? "w-56 md:w-72 mr-1.5 md:mr-2" : "w-0 mr-0"
@@ -106,15 +120,16 @@ export default function Topbar({ isOverlay, mobileOpen, onMobileToggle }: Topbar
           >
             <Search size={16} className="opacity-85" />
           </button>
-
-          {/* Dropdown profile menu */}
+          
+          {/* User menu */}
           <UserMenu
-            isAuthenticated={false}
-            onSignIn={() => console.log("Sign in")}
-            onSignUp={() => console.log("Sign up")}
-            onProfile={() => console.log("Profile")}
-            onSettings={() => console.log("Settings")}
-            onSignOut={() => console.log("Sign out")}
+            isAuthenticated={isAuthenticated}
+            email={email}
+            onSignIn={() => (window.location.href = "/login")}
+            onSignUp={() => (window.location.href = "/signup")}
+            onProfile={() => (window.location.href = "/workspace")}
+            onSettings={() => (window.location.href = "/workspace")}
+            onSignOut={logout}
           />
         </div>
       </div>

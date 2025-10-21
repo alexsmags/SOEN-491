@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User,
+  User2,
   Settings,
   LogIn,
   UserPlus,
@@ -11,6 +11,8 @@ import {
 
 type UserMenuProps = {
   isAuthenticated?: boolean;
+  userName?: string | null;
+  email?: string | null;
   onSignIn?: () => void;
   onSignUp?: () => void;
   onSignOut?: () => void;
@@ -20,6 +22,7 @@ type UserMenuProps = {
 
 export default function UserMenu({
   isAuthenticated = false,
+  email,
   onSignIn,
   onSignUp,
   onSignOut,
@@ -79,6 +82,7 @@ export default function UserMenu({
 
   return (
     <div className="relative">
+      {/* trigger button */}
       <button
         ref={btnRef}
         aria-haspopup="menu"
@@ -88,7 +92,7 @@ export default function UserMenu({
                    focus:outline-none focus:ring-0"
         title="Account"
       >
-        <User size={16} className="opacity-85" />
+        <User2 size={16} className="opacity-85" />
       </button>
 
       {/* Dropdown panel */}
@@ -96,13 +100,19 @@ export default function UserMenu({
         ref={panelRef}
         role="menu"
         aria-label="User menu"
-        className={`absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#1e2128] shadow-xl shadow-black/30 p-2
+        className={`absolute right-0 mt-2 w-60 rounded-xl border border-white/10 bg-[#1e2128] shadow-xl shadow-black/30 p-2
                     transition transform origin-top-right
                     ${open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95"}`}
       >
         {isAuthenticated ? (
           <>
-            <Item icon={User} onClick={onProfile}>
+            {/* Signed-in header */}
+            <div className="px-2 py-2 text-xs text-white/60">
+              <span className="text-white/90">{email ?? "User"}</span>
+            </div>
+            <div className="my-1 h-px bg-white/10" />
+
+            <Item icon={User2} onClick={onProfile}>
               Profile
             </Item>
             <Item icon={Settings} onClick={onSettings}>
