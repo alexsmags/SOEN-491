@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { SessionProvider } from "./session"; // <-- add
+import { SessionProvider } from "./session/SessionProvider"; // <-- add
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
 import EditorPage from "./pages/EditorPage";

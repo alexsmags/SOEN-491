@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import SocialButtons from "../components/Auth/SocialButtons";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";
@@ -13,6 +13,19 @@ const api = axios.create({
   withCredentials: true,
 });
 
+function getErrorMessage(e: unknown): string {
+  if (axios.isAxiosError(e)) {
+    const ax = e as AxiosError<{ message?: string }>;
+    return ax.response?.data?.message ?? ax.message ?? "Request failed.";
+  }
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -20,7 +33,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function onEmailLogin(e: React.FormEvent) {
+  async function onEmailLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
 
@@ -31,10 +44,8 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // 1) Get CSRF token from your Auth.js server
       const { data: csrf } = await api.get("/auth/csrf");
 
-      // 2) Auth.js credentials (JSON mode, no auto-redirect)
       const form = new URLSearchParams();
       form.set("csrfToken", csrf.csrfToken);
       form.set("email", email.trim().toLowerCase());
@@ -54,8 +65,7 @@ export default function LoginPage() {
       const ok = resp.status < 400 && resp.data?.ok === true && !resp.data?.error;
 
       if (!ok) {
-        // Friendly mapping for common Auth.js errors
-        const code = resp.data?.error || "CredentialsSignin";
+        const code: string = resp.data?.error || "CredentialsSignin";
         if (code === "CredentialsSignin") {
           setErr("Invalid email or password. Please try again.");
         } else if (code === "CallbackRouteError") {
@@ -68,17 +78,18 @@ export default function LoginPage() {
       }
 
       window.location.assign(`${CLIENT_URL}/`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       try {
         const me = await api.get("/api/me");
         if (me.status === 200 && me.data?.user) {
           window.location.assign(`${CLIENT_URL}/`);
           return;
         }
-      } catch {
+      } catch (inner: unknown) {
+        console.debug("Silent /api/me check failed:", getErrorMessage(inner));
       }
 
-      setErr(e?.message ?? "Sign-in failed. Please try again.");
+      setErr(getErrorMessage(e) || "Sign-in failed. Please try again.");
       setLoading(false);
     }
   }
@@ -89,9 +100,9 @@ export default function LoginPage() {
     try {
       const url = new URL(`/auth/signin/${provider}`, SERVER_URL);
       url.searchParams.set("callbackUrl", `${CLIENT_URL}/`);
-      window.location.href = url.toString(); 
-    } catch (e: any) {
-      setErr(e?.message ?? `Could not continue with ${provider}.`);
+      window.location.href = url.toString();
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e) || `Could not continue with ${provider}.`);
       setLoading(false);
     }
   }
@@ -116,7 +127,7 @@ export default function LoginPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(ev) => setEmail(ev.target.value)}
               required
               disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
@@ -134,7 +145,7 @@ export default function LoginPage() {
               id="password"
               type={showPw ? "text" : "password"}
               value={pw}
-              onChange={(e) => setPw(e.target.value)}
+              onChange={(ev) => setPw(ev.target.value)}
               required
               disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"

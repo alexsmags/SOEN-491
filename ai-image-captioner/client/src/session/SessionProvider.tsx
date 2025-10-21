@@ -1,18 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-
-type SessionUser = { id?: string; name?: string | null; email?: string | null } | null;
-
-type SessionCtx = {
-  user: SessionUser;
-  loading: boolean;
-  refresh: () => Promise<void>;
-};
-
-const SessionContext = createContext<SessionCtx>({
-  user: null,
-  loading: true,
-  refresh: async () => {},
-});
+import React, { useEffect, useState } from "react";
+import { SessionContext } from "./SessionContext";
+import type { SessionUser } from "./SessionContext";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
 
@@ -49,8 +37,4 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       {children}
     </SessionContext.Provider>
   );
-}
-
-export function useSession() {
-  return useContext(SessionContext);
 }

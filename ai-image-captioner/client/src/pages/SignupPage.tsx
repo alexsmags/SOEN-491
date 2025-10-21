@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, User, CheckCircle2 } from "lucide-react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import SocialButtons from "../components/Auth/SocialButtons";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 type Provider = "google" | "github" | "twitter" | "linkedin";
+type ApiError = { error?: string; message?: string };
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";
@@ -14,6 +15,22 @@ const api = axios.create({
   baseURL: SERVER_URL,
   withCredentials: true,
 });
+
+function getErrorMessage(e: unknown): string {
+  if (axios.isAxiosError<ApiError>(e)) {
+    return (
+      e.response?.data?.message ??
+      e.message ??
+      "Request failed."
+    );
+  }
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -68,11 +85,20 @@ export default function SignupPage() {
       document.body.appendChild(formEl);
       setOk("Account created! Signing you in…");
       formEl.submit();
-    } catch (e: any) {
-      const code = e?.response?.data?.error;
-      if (code === "email_in_use") setErr("That email is already registered. Try signing in instead.");
-      else if (code === "invalid_input") setErr("Please check your details and try again.");
-      else setErr(e?.message ?? "Sign-up failed. Please try again.");
+    } catch (e: unknown) {
+      let code: string | undefined;
+      if (axios.isAxiosError<ApiError>(e)) {
+        code = (e as AxiosError<ApiError>).response?.data?.error;
+      }
+
+      if (code === "email_in_use") {
+        setErr("That email is already registered. Try signing in instead.");
+      } else if (code === "invalid_input") {
+        setErr("Please check your details and try again.");
+      } else {
+        setErr(getErrorMessage(e) ?? "Sign-up failed. Please try again.");
+      }
+
       setLoading(false);
     }
   }
@@ -104,9 +130,17 @@ export default function SignupPage() {
         <div className="space-y-1.5">
           <label htmlFor="name" className="text-sm text-white/80">Name</label>
           <div className="relative">
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required disabled={loading}
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(ev) => setName(ev.target.value)}
+              required
+              disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
-              placeholder="Your name" autoComplete="name" />
+              placeholder="Your name"
+              autoComplete="name"
+            />
             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
           </div>
         </div>
@@ -114,9 +148,17 @@ export default function SignupPage() {
         <div className="space-y-1.5">
           <label htmlFor="email" className="text-sm text-white/80">Email</label>
           <div className="relative">
-            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading}
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+              required
+              disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
-              placeholder="you@example.com" autoComplete="email" />
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
             <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
           </div>
         </div>
@@ -124,12 +166,26 @@ export default function SignupPage() {
         <div className="space-y-1.5">
           <label htmlFor="password" className="text-sm text-white/80">Password</label>
           <div className="relative">
-            <input id="password" type={showPw ? "text" : "password"} value={pw} onChange={(e) => setPw(e.target.value)} required disabled={loading}
+            <input
+              id="password"
+              type={showPw ? "text" : "password"}
+              value={pw}
+              onChange={(ev) => setPw(ev.target.value)}
+              required
+              disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 pr-12 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
-              placeholder="At least 8 characters" autoComplete="new-password" minLength={8} />
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              minLength={8}
+            />
             <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-              onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Hide password" : "Show password"} disabled={loading}>
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+              disabled={loading}
+            >
               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
@@ -138,22 +194,41 @@ export default function SignupPage() {
         <div className="space-y-1.5">
           <label htmlFor="password2" className="text-sm text-white/80">Confirm Password</label>
           <div className="relative">
-            <input id="password2" type={showPw ? "text" : "password"} value={pw2} onChange={(e) => setPw2(e.target.value)} required disabled={loading}
+            <input
+              id="password2"
+              type={showPw ? "text" : "password"}
+              value={pw2}
+              onChange={(ev) => setPw2(ev.target.value)}
+              required
+              disabled={loading}
               className="w-full h-11 md:h-12 rounded-xl bg-white/5 border border-white/10 px-11 text-sm md:text-base outline-none focus:border-white/20 disabled:opacity-60"
-              placeholder="Repeat password" autoComplete="new-password" minLength={8} />
+              placeholder="Repeat password"
+              autoComplete="new-password"
+              minLength={8}
+            />
             <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
           </div>
         </div>
 
         <label className="mt-2 inline-flex items-center gap-2 text-xs text-white/80 cursor-pointer">
-          <input type="checkbox" className="accent-[#364881]" checked={agree} onChange={(e) => setAgree(e.target.checked)} disabled={loading} />
+          <input
+            type="checkbox"
+            className="accent-[#364881]"
+            checked={agree}
+            onChange={(ev) => setAgree(ev.target.checked)}
+            disabled={loading}
+          />
           I agree to the{" "}
           <Link to="/terms" className="text-[#8ea2ff] hover:underline">Terms</Link> and{" "}
           <Link to="/privacy" className="text-[#8ea2ff] hover:underline">Privacy Policy</Link>.
         </label>
 
-        <button type="submit" disabled={loading} className="w-full h-11 md:h-12 rounded-xl border border-white/15 shadow-sm disabled:opacity-60"
-          style={{ backgroundColor: "#364881" }}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full h-11 md:h-12 rounded-xl border border-white/15 shadow-sm disabled:opacity-60"
+          style={{ backgroundColor: "#364881" }}
+        >
           {loading ? "Creating account…" : "Create account"}
         </button>
       </form>
