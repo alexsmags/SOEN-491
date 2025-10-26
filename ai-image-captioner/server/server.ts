@@ -6,33 +6,30 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { v4 as uuid } from "uuid";
+import swaggerUi from "swagger-ui-express";
 
 import { authHandler, authConfig } from "./auth.js";
 import { signup } from "./routes/signup.js";
 import { getSession } from "@auth/express";
 import { prisma } from "./prisma.js";
 import { Prisma } from "@prisma/client";
+import { openapiSpec } from "./openapi.js";
 
 dotenv.config();
 
 const app = express();
 app.set("trust proxy", true);
 
-// ---------- Env / constants ----------
 const PORT = Number(process.env.PORT ?? 5000);
 const FRONTEND_ORIGIN = process.env.ORIGIN ?? "http://localhost:5173";
 const BASE_URL = (process.env.BASE_URL ?? `http://localhost:${PORT}`).replace(/\/$/, "");
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? path.join(process.cwd(), "uploads"));
 
-// Helper to make absolute URLs for the browser
 const makePublicUrl = (p: string) =>
   new URL(p.startsWith("/") ? p : `/${p}`, BASE_URL).href;
 
-// Extract "filename" from "/uploads/<filename>"
 const getUploadBasename = (imageUrl: string) => {
-  // supports absolute or relative
   try {
-    // If absolute, peel path off
     const u = new URL(imageUrl, BASE_URL);
     const m = u.pathname.match(/\/uploads\/(.+)$/);
     return m ? m[1] : path.basename(imageUrl);
@@ -42,7 +39,7 @@ const getUploadBasename = (imageUrl: string) => {
   }
 };
 
-// ---------- Middleware ----------
+// Middleware
 app.use(
   cors({
     origin: [FRONTEND_ORIGIN, "http://127.0.0.1:5173"],
@@ -53,7 +50,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ---------- Logging ----------
+// Logging
 app.use((req, _res, next) => {
   console.log(`[REQ] ${req.method} ${req.originalUrl}`);
   next();
@@ -67,7 +64,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------- Static uploads ----------
+// Static uploads
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 app.use(
   "/uploads",
@@ -75,13 +72,12 @@ app.use(
     maxAge: "1d",
     immutable: true,
     setHeaders: (res) => {
-      // allow embedding from your FE
       res.setHeader("Access-Control-Allow-Origin", "*");
     },
   })
 );
 
-// ---------- Multer (disk) ----------
+// Multer
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
@@ -91,7 +87,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ---------- Auth helper (dev shim) ----------
+// Auth helper
 async function requireUserId(req: express.Request): Promise<string> {
   const dev = req.header("x-user-id");
   if (dev) return dev;
@@ -106,7 +102,7 @@ async function requireUserId(req: express.Request): Promise<string> {
   return uid;
 }
 
-// ---------- Health / Debug ----------
+// Health / Debug
 app.get("/health", (_req, res) => res.json({ ok: true }));
 app.get("/debug/routes", (_req, res) => {
   const routes: string[] = [];
@@ -158,11 +154,10 @@ app.get("/debug/whoami", async (req, res) => {
   res.json({ session });
 });
 
-// ---------- Auth / Signup ----------
+// Auth / Signup 
 app.use("/auth", authHandler);
 app.use("/api/signup", signup);
 
-// ---------- Me ----------
 app.get("/api/me", async (req, res) => {
   const session = await getSession(req, authConfig);
   if (!session?.user) return res.status(401).json({ error: "unauthorized" });
@@ -175,10 +170,7 @@ app.get("/api/logout", (req, res) => {
   res.redirect(`${base}/auth/signout?callbackUrl=${encodeURIComponent(fe)}`);
 });
 
-// =====================================================================
-// ================      MEDIA PERSISTENCE ROUTES       ================
-// =====================================================================
-
+// MEDIA PERSISTENCE ROUTES
 function toKeywordsInput(
   raw: unknown
 ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
@@ -187,14 +179,13 @@ function toKeywordsInput(
       const parsed = JSON.parse(raw);
       return parsed == null ? Prisma.DbNull : (parsed as Prisma.InputJsonValue);
     } catch {
-      return [] as unknown as Prisma.InputJsonValue; // fallback for bad JSON
+      return [] as unknown as Prisma.InputJsonValue;
     }
   }
   if (raw == null) return Prisma.DbNull;
   return raw as Prisma.InputJsonValue;
 }
 
-// Create (upload + create)
 app.post("/api/media", upload.single("file"), async (req, res, next) => {
   try {
     const userId = await requireUserId(req);
@@ -215,14 +206,13 @@ app.post("/api/media", upload.single("file"), async (req, res, next) => {
       posY = 120,
     } = req.body;
 
-    // store filename on disk; return absolute URL
     const filename = req.file.filename;
     const imageUrl = makePublicUrl(`/uploads/${filename}`);
 
     const media = await prisma.media.create({
       data: {
         userId,
-        imageUrl, // absolute URL now
+        imageUrl,
         caption,
         tone,
         keywords: toKeywordsInput(keywords),
@@ -244,7 +234,6 @@ app.post("/api/media", upload.single("file"), async (req, res, next) => {
   }
 });
 
-// List user's media
 app.get("/api/media", async (req, res, next) => {
   try {
     const userId = await requireUserId(req);
@@ -278,7 +267,6 @@ app.get("/api/media", async (req, res, next) => {
       prisma.media.count({ where }),
     ]);
 
-    // Normalize any legacy relative URLs to absolute
     const norm = items.map((m) => {
       const url =
         typeof m.imageUrl === "string" && m.imageUrl.startsWith("/uploads/")
@@ -293,7 +281,6 @@ app.get("/api/media", async (req, res, next) => {
   }
 });
 
-// Read one
 app.get("/api/media/:id", async (req, res, next) => {
   try {
     const userId = await requireUserId(req);
@@ -313,7 +300,6 @@ app.get("/api/media/:id", async (req, res, next) => {
   }
 });
 
-// Update caption + style
 app.put("/api/media/:id", async (req, res, next) => {
   try {
     const userId = await requireUserId(req);
@@ -360,7 +346,6 @@ app.put("/api/media/:id", async (req, res, next) => {
       data,
     });
 
-    // Return absolute URL
     const url =
       typeof updated.imageUrl === "string" && updated.imageUrl.startsWith("/uploads/")
         ? makePublicUrl(updated.imageUrl)
@@ -372,16 +357,13 @@ app.put("/api/media/:id", async (req, res, next) => {
   }
 });
 
-// Delete
 app.delete("/api/media/:id", async (req, res, next) => {
   try {
     const userId = await requireUserId(req);
     const current = await prisma.media.findFirst({
       where: { id: req.params.id, userId },
     });
-    if (!current) return res.status(404).json({ error: "not_found" });
-
-    // Determine basename and delete from disk
+  if (!current) return res.status(404).json({ error: "not_found" });
     const basename = getUploadBasename(String(current.imageUrl ?? ""));
     const full = path.join(UPLOAD_DIR, basename);
     fs.promises.unlink(full).catch(() => void 0);
@@ -393,19 +375,29 @@ app.delete("/api/media/:id", async (req, res, next) => {
   }
 });
 
-// Frontend redirect
+// SWAGGER / OPENAPI
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(openapiSpec, {
+    swaggerOptions: { displayRequestDuration: true },
+  })
+);
+
+app.get("/openapi.json", (_req, res) => res.json(openapiSpec));
+
+// FRONTEND REDIRECT
+
 app.get(/^\/(?!api|auth|debug|uploads).*/, (req, res) => {
   const q = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
   res.redirect(302, `${FRONTEND_ORIGIN}${req.path}${q}`);
 });
 
-// 404
 app.use((req, res) => {
   console.warn(`[404] ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: "not_found", path: req.originalUrl });
 });
 
-// Error handler
 app.use(
   (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const status = err.status || 500;
@@ -414,4 +406,6 @@ app.use(
   }
 );
 
-app.listen(PORT, () => console.log(`API running on :${PORT} (BASE_URL=${BASE_URL})`));
+app.listen(PORT, () =>
+  console.log(`API running on :${PORT} (BASE_URL=${BASE_URL})`)
+);
