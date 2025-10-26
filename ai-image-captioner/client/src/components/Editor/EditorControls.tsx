@@ -3,7 +3,7 @@ import {
   AlignLeft, AlignCenter, AlignRight,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
   ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight,
-  Square
+  Square, Check, ImageDown
 } from "lucide-react";
 import IconButton from "./IconButton";
 import IconToggle from "./IconToggle";
@@ -29,6 +29,14 @@ export default function EditorControls({
   nudge,
   centerPosition,
   NUDGE,
+  onSave,
+  saving = false,
+  saveSuccess = false,
+
+  showSaveImage = false,
+  onSaveImage,
+  savingImage = false,
+  saveImageSuccess = false,
 }: {
   caption: string;
   setCaption: (v: string) => void;
@@ -50,12 +58,23 @@ export default function EditorControls({
   nudge: (dx: number, dy: number) => void;
   centerPosition: () => void;
   NUDGE: number;
+  onSave: () => void;
+  saving?: boolean;
+  saveSuccess?: boolean;
+
+  showSaveImage?: boolean;
+  onSaveImage?: () => void;
+  savingImage?: boolean;
+  saveImageSuccess?: boolean; 
 }) {
+  const showActionRow = !showSaveImage || saveImageSuccess;
+
   return (
     <aside
       className="
-        flex-1 overflow-y-auto p-5 md:p-6 bg-black
-        max-h-[calc(100svh-56px)] lg:max-h-[calc(100vh-56px)]
+        p-5 md:p-6 bg-black
+        overflow-y-auto
+        pb-[var(--footer-h)]
       "
     >
       <h3 className="text-lg font-bold mb-2">Caption & Style Editor</h3>
@@ -125,7 +144,7 @@ export default function EditorControls({
         </div>
       </div>
 
-      {/* Position (move controls) */}
+      {/* Position */}
       <div className="mt-5">
         <div className="text-sm text-white/70 mb-2">Caption Position</div>
         <div className="grid grid-cols-3 gap-2">
@@ -187,30 +206,55 @@ export default function EditorControls({
         </>
       )}
 
+      {/* First-time Save Image button */}
+      {showSaveImage && (
+        <div className="mt-6 flex justify-center">
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 transition disabled:opacity-50"
+            onClick={onSaveImage}
+            disabled={savingImage}
+          >
+            {saveImageSuccess ? <Check size={16} /> : <ImageDown size={16} />}
+            {saveImageSuccess ? "Success" : (savingImage ? "Saving image…" : "Save Image to Workspace")}
+          </button>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="mt-6 flex justify-center gap-3 flex-wrap">
-        <button
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#364881] px-4 py-2 text-sm font-semibold shadow-sm hover:brightness-110 transition"
-          onClick={() => console.log("Save to Workspace")}
-        >
-          <Save size={16} /> Save
-        </button>
-        <button
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition"
-          onClick={() => console.log("Share")}
-        >
-          <Share2 size={16} /> Share
-        </button>
-        <button
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition"
-          onClick={() => {
-            navigator.clipboard.writeText(caption).catch(() => undefined);
-            console.log("Copied caption");
-          }}
-        >
-          <Copy size={16} /> Copy
-        </button>
-      </div>
+      {showActionRow && (
+        <div className="mt-4 flex justify-center gap-3 flex-wrap pb-4">
+          <button
+            className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50
+              ${saveSuccess
+                ? "bg-green-600 hover:bg-green-700 text-white"
+                : "bg-[#364881] hover:brightness-110 text-white"}`}
+            onClick={onSave}
+            disabled={saving}
+            title="Save caption/style/position"
+          >
+            {saveSuccess ? <Check size={16} /> : <Save size={16} />}
+            {saveSuccess ? "Success" : (saving ? "Saving…" : "Save")}
+          </button>
+
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition"
+            onClick={() => console.log("Share")}
+            title="Share"
+          >
+            <Share2 size={16} /> Share
+          </button>
+
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition"
+            onClick={() => {
+              navigator.clipboard.writeText(caption).catch(() => undefined);
+            }}
+            title="Copy caption"
+          >
+            <Copy size={16} /> Copy
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
