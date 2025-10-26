@@ -5,9 +5,25 @@ type Props = {
   tone: string;
   onRegenerate: () => void;
   onUse: () => void;
+
+  onSave: () => void;
+  canSave?: boolean;
+  saveBusy?: boolean;
+  saveDone?: boolean;
+  saveError?: string | null;
 };
 
-export default function CaptionResult({ caption, tone, onRegenerate, onUse }: Props) {
+export default function CaptionResult({
+  caption,
+  tone,
+  onRegenerate,
+  onUse,
+  onSave,
+  canSave = true,
+  saveBusy = false,
+  saveDone = false,
+  saveError = null,
+}: Props) {
   return (
     <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-6 md:p-8">
       <div className="flex items-center justify-between gap-3">
@@ -23,21 +39,42 @@ export default function CaptionResult({ caption, tone, onRegenerate, onUse }: Pr
         <p className="text-base md:text-lg leading-relaxed text-white/90">{caption}</p>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <CopyButton text={caption} className="w-full" />
+      <div className="mt-5 grid grid-cols-1 sm:grid-cols-4 gap-2">
         <button
-          onClick={onRegenerate}
-          className="rounded-lg px-3 py-2 text-sm border border-white/15 bg-white/[0.05] hover:bg-white/[0.1] transition"
+          onClick={onSave}
+          disabled={!canSave || saveBusy}
+          className="rounded-lg px-3 py-2 text-sm border border-white/15 bg-emerald-700 hover:bg-emerald-600 transition disabled:opacity-50"
         >
-          Regenerate
+          {saveBusy ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-transparent animate-spin" />
+              Saving…
+            </span>
+          ) : saveDone ? (
+            "Saved ✓"
+          ) : (
+            "Save to Workspace"
+          )}
         </button>
+
         <button
           onClick={onUse}
           className="rounded-lg px-3 py-2 text-sm border border-white/15 bg-[#364881] hover:bg-[#4d5ca1] transition"
         >
           Use → Editor
         </button>
+
+        <CopyButton text={caption} className="w-full" />
+
+        <button
+          onClick={onRegenerate}
+          className="rounded-lg px-3 py-2 text-sm border border-white/15 bg-white/[0.05] hover:bg-white/[0.1] transition"
+        >
+          Regenerate
+        </button>
       </div>
+
+      {saveError && <p className="mt-2 text-xs text-red-400">{saveError}</p>}
     </div>
   );
 }

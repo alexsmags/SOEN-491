@@ -4,7 +4,7 @@ import Topbar from "../components/Topbar";
 import Footer from "../components/Footer";
 import { ImagePicker } from "../components/Share/ImagePicker";
 import { PreviewWithShare } from "../components/Share/PreviewWithShare";
-import { ShareModal } from "../components/Share/ShareModal";
+import { ShareModal } from "../components/Share/Modals/ShareModal";
 import { buildShareUrl } from "../lib/shareUrls";
 import { SHARE_TARGETS } from "../data/shareTargets";
 import type { ShareTarget, SharePayload } from "../data/shareTargets";

@@ -1,5 +1,3 @@
-// src/components/Sidebar.tsx
-
 import {
   Home,
   Upload,
@@ -13,41 +11,42 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import logo from "../assets/CaptoPic_Logo.png";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, type To } from "react-router-dom";
 import { useSession } from "../session/useSession";
 
 type NavItemProps = {
   label: string;
   Icon: LucideIcon;
-  to: string;
+  to: To;
   collapsed?: boolean;
 };
 
 const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
-  const { pathname } = useLocation();
-  const active = pathname === to;
+
+  const linkTo =
+    to === "/workspace"
+      ? { pathname: "/workspace", search: "?page=1" }
+      : to;
 
   return (
-    <Link
-      to={to}
-      className={[
-        "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
-        active
-          ? "bg-white/10 text-white shadow"
-          : "text-white/70 hover:text-white hover:bg-white/5",
-        collapsed ? "justify-center" : "",
-      ].join(" ")}
+    <NavLink
+      to={linkTo}
+      end
+      className={({ isActive }) =>
+        [
+          "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
+          isActive ? "bg-white/10 text-white shadow" : "text-white/70 hover:text-white hover:bg-white/5",
+          collapsed ? "justify-center" : "",
+        ].join(" ")
+      }
       title={collapsed ? label : undefined}
     >
       <Icon size={18} className="shrink-0 opacity-90" />
       <span className={collapsed ? "hidden" : "truncate"}>{label}</span>
-    </Link>
+    </NavLink>
   );
 };
 
-/**
- * Links that require authentication are hidden when `user` is falsy.
- */
 const links: Array<{
   label: string;
   Icon: LucideIcon;
@@ -55,11 +54,11 @@ const links: Array<{
   requiresAuth?: boolean;
 }> = [
   { label: "Homepage", Icon: Home, to: "/" },
-  { label: "Upload & Generate", Icon: Upload, to: "/upload", requiresAuth: true }, // now private
+  { label: "Upload & Generate", Icon: Upload, to: "/upload", requiresAuth: true },
   { label: "Editor", Icon: Edit3, to: "/editor", requiresAuth: true },
   { label: "My Workspace", Icon: Images, to: "/workspace", requiresAuth: true },
   { label: "Share", Icon: Share2, to: "/share", requiresAuth: true },
-  { label: "Product Mode", Icon: Package, to: "/product" }, // keep public unless you want it private too
+  { label: "Product Mode", Icon: Package, to: "/product" },
 ];
 
 type SidebarProps = {
@@ -99,7 +98,7 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar shell */}
+      {/* Sidebar container */}
       <aside
         className={[
           "fixed left-0 top-0 h-screen z-50 bg-black border-r border-white/10 p-3",
@@ -135,7 +134,7 @@ export default function Sidebar({
             CaptoPic
           </span>
 
-          {/* Overlay close */}
+          {/* Overlay close button */}
           {isOverlay && (
             <button
               onClick={onClose}
@@ -162,7 +161,7 @@ export default function Sidebar({
         </nav>
       </aside>
 
-      {/* Toggle button aligned to the sidebar's right edge */}
+      {/* Docked toggle button */}
       {!isOverlay && (
         <button
           onClick={onToggle}
