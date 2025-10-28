@@ -61,7 +61,7 @@ export default function EditorPreview({
     <div className="p-4 md:p-6">
       <div
         ref={frameRef}
-        className="relative mx-auto w-full max-w-[820px] rounded-xl bg-black/60 border-8 border-[#2a2f3a] overflow-hidden"
+        className="relative mx-auto w-full max-w-[820px] rounded-xl bg-black/60 border-8 border-[#2a2f3a] overflow-hidden "
         style={{
           aspectRatio: aspectFromNat ?? "4 / 3",
         }}

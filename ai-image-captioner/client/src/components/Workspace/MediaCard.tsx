@@ -23,6 +23,9 @@ type CardItem = {
   posY: number;
 };
 
+// cache is optional; kept here in case you expand logic later
+const missingCache = new Map<string, boolean>();
+
 export default function MediaCard({
   item,
   shareTargets,
@@ -46,6 +49,31 @@ export default function MediaCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  // Prevent duplicate delete calls (HEAD + onError) for the same card
+  const autoDeletedRef = useRef(false);
+
+  // Single existence check via HEAD. If missing → delete once.
+  useEffect(() => {
+    // reset the guard when the item changes
+    autoDeletedRef.current = false;
+
+    const controller = new AbortController();
+    fetch(item.src, { method: "HEAD", cache: "no-cache", signal: controller.signal })
+      .then((res) => {
+        const isMissing = !res.ok;
+        missingCache.set(item.id, isMissing);
+        if (isMissing && !autoDeletedRef.current) {
+          autoDeletedRef.current = true;
+          onMore?.();
+        }
+      })
+      .catch(() => {
+        // ignore network errors to avoid false deletes
+      });
+
+    return () => controller.abort();
+  }, [item.id, item.src, onMore]);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -84,7 +112,6 @@ export default function MediaCard({
       className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
       aria-disabled={disabled || undefined}
     >
-      {/* Click image to edit */}
       <button
         type="button"
         onClick={imgButtonClickable ? onEdit : undefined}
@@ -100,6 +127,13 @@ export default function MediaCard({
             loading="lazy"
             decoding="async"
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            onError={() => {
+              // Guard against a second delete after the HEAD-based delete
+              if (!autoDeletedRef.current) {
+                autoDeletedRef.current = true;
+                onMore?.();
+              }
+            }}
           />
         </div>
       </button>
@@ -109,18 +143,13 @@ export default function MediaCard({
         {created && <p className="mt-1 text-[11px] text-white/50">{created}</p>}
       </div>
 
-      {/* Top-right actions */}
       {!disabled && (
         <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           {onEdit && (
             <button
               onClick={onEdit}
               title="Edit"
-              className="
-                inline-flex h-8 w-8 items-center justify-center
-                rounded-xl border border-white/10 bg-white/5 hover:bg-white/10
-                transition
-              "
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
             >
               <Pencil size={16} className="text-white" />
             </button>
@@ -130,11 +159,7 @@ export default function MediaCard({
             <button
               onClick={() => setMenuOpen((v) => !v)}
               title="More"
-              className="
-                inline-flex h-8 w-8 items-center justify-center
-                rounded-xl border border-white/10 bg-white/5 hover:bg-white/10
-                transition
-              "
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
             >
               <MoreVertical size={16} className="text-white" />
             </button>
@@ -144,7 +169,6 @@ export default function MediaCard({
                 className="absolute right-0 mt-2 w-44 rounded-lg border border-white/10 bg-[#0b0f16] text-white shadow-xl z-10"
                 role="menu"
               >
-                {/* Share */}
                 <button
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
                   onClick={openShare}
@@ -153,8 +177,6 @@ export default function MediaCard({
                   <Share2 size={14} className="text-blue-400" />
                   <span>Share</span>
                 </button>
-
-                {/* Delete */}
                 <button
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
                   onClick={handleDeleteClick}
@@ -169,7 +191,6 @@ export default function MediaCard({
         </div>
       )}
 
-      {/* Delete confirmation modal */}
       <ConfirmModal
         open={!disabled && confirmOpen}
         title="Delete this item?"
@@ -179,14 +200,13 @@ export default function MediaCard({
             <span className="font-semibold">“{caption || "Untitled"}”</span>.
           </span>
         }
-        confirmText="Delete"
+        confirmText="Delete permanently"
         cancelText="Cancel"
         tone="danger"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={handleConfirmDelete}
       />
 
-      {/* Share modal */}
       <ShareModal
         open={!disabled && shareOpen}
         onClose={() => setShareOpen(false)}

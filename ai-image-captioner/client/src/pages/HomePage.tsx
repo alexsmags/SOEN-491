@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Footer from "../components/Footer";
+import Sidebar from "../components/Layout/Sidebar";
+import Topbar from "../components/Layout/Topbar";
+import Footer from "../components/Layout/Footer";
 import FeatureCard from "../components/HomePage/FeatureCard";
 import TestimonialCard from "../components/HomePage/TestimonialCard";
 import caption_image from "../assets/caption_image.png";
@@ -109,7 +109,6 @@ function SkeletonTestimonials() {
     </section>
   );
 }
-/** ---------------------------------------- */
 
 export default function HomePage() {
   const view = useView();
@@ -181,7 +180,6 @@ export default function HomePage() {
         <main className="flex-grow pt-14 px-6 md:px-10 pb-32 black-bg">
           {loading ? (
             <>
-              {/* Optional: placeholder for greeting spacing */}
               <SkeletonLine className="h-10 w-60 mt-10 mb-4 rounded" />
               <SkeletonHero />
               <SkeletonFeatures />

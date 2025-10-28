@@ -17,15 +17,21 @@ export type Media = {
   updatedAt: string;
 };
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5000";
-const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID ?? "dev-user-1";
+// Prefer the server URL; fall back to API base or localhost:5000
+const BASE =
+  import.meta.env.VITE_SERVER_URL ??
+  import.meta.env.VITE_API_BASE ??
+  "http://localhost:5000";
 
-const commonHeaders: HeadersInit = {
-  "x-user-id": DEV_USER_ID,
-};
+// Optional dev override: read from localStorage (not from VITE_* constants)
+function getDevHeaders(): HeadersInit {
+  // Only use for local dev; remove if you don’t want header overrides at all
+  const id = typeof window !== "undefined" ? localStorage.getItem("dev-user-id") : null;
+  return id ? { "x-user-id": id } : {};
+}
 
 export function __debugApiBase() {
-  return { BASE, DEV_USER_ID, commonHeaders };
+  return { BASE, devHeader: getDevHeaders() };
 }
 
 async function debugFetch(
@@ -41,7 +47,7 @@ async function debugFetch(
   const reqInit: RequestInit = {
     ...init,
     signal: controller.signal,
-    credentials: init.credentials ?? "include",
+    credentials: init.credentials ?? "include", // important for session cookies
   };
 
   console.group(label);
@@ -50,7 +56,8 @@ async function debugFetch(
     if (init.body instanceof FormData) {
       const parts: string[] = [];
       init.body.forEach((v, k) => {
-        if (v instanceof File) parts.push(`${k}: [File name=${v.name} type=${v.type} size=${v.size}]`);
+        if (v instanceof File)
+          parts.push(`${k}: [File name=${v.name} type=${v.type} size=${v.size}]`);
         else parts.push(`${k}: ${String(v).slice(0, 200)}`);
       });
       bodyDesc = `FormData { ${parts.join(", ")} }`;
@@ -91,7 +98,7 @@ export async function uploadMedia(opts: {
   tone?: string;
   keywords?: string[];
   style?: Partial<Media>;
-}): Promise<Media> {
+}): Promise<{ id: string; item: Media }> {
   const form = new FormData();
   form.append("file", opts.file);
   form.append("caption", opts.caption);
@@ -107,34 +114,42 @@ export async function uploadMedia(opts: {
   const res = await debugFetch(url, {
     method: "POST",
     body: form,
-    headers: commonHeaders,
+    headers: { ...getDevHeaders() },
     timeoutMs: 30000,
   });
   if (!res.ok) throw new Error(`uploadMedia failed: ${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function listMedia(params?: { tone?: string; keyword?: string; page?: number; pageSize?: number; }) {
+export async function listMedia(params?: {
+  tone?: string;
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+}) {
   const url = new URL(`${BASE}/api/media`);
   if (params?.tone) url.searchParams.set("tone", params.tone);
   if (params?.keyword) url.searchParams.set("keyword", params.keyword);
   if (params?.page) url.searchParams.set("page", String(params.page));
   if (params?.pageSize) url.searchParams.set("pageSize", String(params.pageSize));
-  const res = await debugFetch(url, { headers: commonHeaders, timeoutMs: 20000 });
+  const res = await debugFetch(url, { headers: { ...getDevHeaders() }, timeoutMs: 20000 });
   if (!res.ok) throw new Error(`listMedia failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<{ items: Media[]; total: number; page: number; pageSize: number }>;
 }
 
 export async function getMedia(id: string): Promise<Media> {
-  const res = await debugFetch(`${BASE}/api/media/${id}`, { headers: commonHeaders, timeoutMs: 20000 });
+  const res = await debugFetch(`${BASE}/api/media/${id}`, {
+    headers: { ...getDevHeaders() },
+    timeoutMs: 20000,
+  });
   if (!res.ok) throw new Error(`getMedia failed: ${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function updateMedia(id: string, data: Partial<Media>): Promise<Media> {
+export async function updateMedia(id: string, data: Partial<Media>): Promise<{ id: string; item: Media }> {
   const res = await debugFetch(`${BASE}/api/media/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...commonHeaders },
+    headers: { "Content-Type": "application/json", ...getDevHeaders() },
     body: JSON.stringify(data),
     timeoutMs: 20000,
   });
@@ -143,12 +158,20 @@ export async function updateMedia(id: string, data: Partial<Media>): Promise<Med
 }
 
 export async function deleteMedia(id: string): Promise<void> {
-  const res = await debugFetch(`${BASE}/api/media/${id}`, { method: "DELETE", headers: commonHeaders, timeoutMs: 20000 });
+  const res = await debugFetch(`${BASE}/api/media/${id}`, {
+    method: "DELETE",
+    headers: { ...getDevHeaders() },
+    timeoutMs: 20000,
+  });
   if (!res.ok) throw new Error(`deleteMedia failed: ${res.status} ${res.statusText}`);
 }
 
-export async function duplicateMedia(id: string): Promise<Media> {
-  const res = await debugFetch(`${BASE}/api/media/${id}/duplicate`, { method: "POST", headers: commonHeaders, timeoutMs: 20000 });
+export async function duplicateMedia(id: string): Promise<{ id: string; item: Media }> {
+  const res = await debugFetch(`${BASE}/api/media/${id}/duplicate`, {
+    method: "POST",
+    headers: { ...getDevHeaders() },
+    timeoutMs: 20000,
+  });
   if (!res.ok) throw new Error(`duplicateMedia failed: ${res.status} ${res.statusText}`);
   return res.json();
 }

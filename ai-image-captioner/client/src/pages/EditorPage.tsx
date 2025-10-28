@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
 
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Footer from "../components/Footer";
+import Sidebar from "../components/Layout/Sidebar";
+import Topbar from "../components/Layout/Topbar";
+import Footer from "../components/Layout/Footer";
 import EditorPreview from "../components/Editor/EditorPreview";
 import EditorControls from "../components/Editor/EditorControls";
 
@@ -12,15 +12,67 @@ import { useView } from "../hooks/useView";
 import { useCanvasFrame } from "../hooks/useCanvasFrame";
 import { computeBubbleStyle } from "../utils/computeBubbleStyle";
 import { PALETTE } from "../constants/color";
-import { fetchMedia, saveMedia, type MediaItem } from "../services/mediaApi";
+import type { MediaItem } from "../types/media";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "";
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ??
+  import.meta.env.VITE_API_BASE ??
+  "";
+
+function getDevHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const id = localStorage.getItem("dev-user-id");
+  return id ? { "x-user-id": id } : {};
+}
 
 const PICKER_KEY = "workspace-picker";
 function setPickerFlag() {
   if (typeof window === "undefined") return;
   const payload = { from: "editor", ts: Date.now() };
   sessionStorage.setItem(PICKER_KEY, JSON.stringify(payload));
+}
+
+async function apiFetchMedia(id: string): Promise<MediaItem> {
+  const res = await fetch(`${SERVER_URL}/api/media/${id}`, {
+    credentials: "include",
+    headers: {
+      ...getDevHeaders(),
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to load media (${res.status})`);
+  return res.json();
+}
+
+async function apiSaveMedia(
+  id: string,
+  payload: Partial<
+    Pick<
+      MediaItem,
+      | "caption"
+      | "fontFamily"
+      | "fontSize"
+      | "textColor"
+      | "align"
+      | "showBg"
+      | "bgColor"
+      | "bgOpacity"
+      | "posX"
+      | "posY"
+    >
+  >
+): Promise<MediaItem> {
+  const res = await fetch(`${SERVER_URL}/api/media/${id}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...getDevHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to save media (${res.status})`);
+  const data = await res.json();
+  return data?.item ?? data;
 }
 
 type TempMediaState = {
@@ -95,9 +147,6 @@ export default function EditorPage() {
   const [bgColor, setBgColor] = useState("#3B3F4A");
   const [bgOpacity, setBgOpacity] = useState(0.8);
 
-  const nudge = (dx: number, dy: number) =>
-    setPosFrame((p) => clampPosition(p.x + dx, p.y + dy));
-
   const applyAlign = (a: "left" | "center" | "right") => {
     const frame = frameRef.current;
     const bubble = bubbleRef.current;
@@ -145,7 +194,7 @@ export default function EditorPage() {
     (async () => {
       if (mediaId) {
         try {
-          const m: MediaItem = await fetchMedia(mediaId);
+          const m: MediaItem = await apiFetchMedia(mediaId);
           if (cancelled) return;
           setImageUrl(m.imageUrl);
           setCaption(m.caption || "");
@@ -241,7 +290,7 @@ export default function EditorPage() {
       const natPosX = Math.round(posFrame.x / (scale || 1));
       const natPosY = Math.round(posFrame.y / (scale || 1));
 
-      const updated = await saveMedia(mediaId, {
+      const updated = await apiSaveMedia(mediaId, {
         caption,
         fontFamily,
         fontSize,
@@ -309,6 +358,9 @@ export default function EditorPage() {
         method: "POST",
         body: fd,
         credentials: "include",
+        headers: {
+          ...getDevHeaders(),
+        },
       });
 
       if (!res.ok) {
@@ -389,7 +441,7 @@ export default function EditorPage() {
                     }}
                   />
                 ) : (
-                  <div className="aspect-[4/3] w-full border border-dashed border-white/20 rounded-xl grid place-items-center px-6">
+                  <div className="aspect-[4/3] w-full border-2 border-dashed border-white/10 bg-white/[0.03] rounded-xl grid place-items-center px-6">
                     <div className="text-center">
                       <p className="text-lg font-semibold">No image loaded</p>
                       <p className="text-sm text-white/60 mt-1">
@@ -437,7 +489,7 @@ export default function EditorPage() {
                 bgOpacity={bgOpacity}
                 setBgOpacity={setBgOpacity}
                 COLORS={PALETTE}
-                nudge={nudge}
+                nudge={(dx,dy)=>setPosFrame((p)=>clampPosition(p.x+dx,p.y+dy))}
                 centerPosition={centerPosition}
                 NUDGE={10}
                 onSave={saveChanges}
