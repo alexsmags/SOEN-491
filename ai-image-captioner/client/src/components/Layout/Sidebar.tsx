@@ -10,9 +10,9 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import logo from "../assets/CaptoPic_Logo.png";
+import logo from "../../assets/CaptoPic_Logo.png";
 import { NavLink, type To } from "react-router-dom";
-import { useSession } from "../session/useSession";
+import { useSession } from "../../session/useSession";
 
 type NavItemProps = {
   label: string;

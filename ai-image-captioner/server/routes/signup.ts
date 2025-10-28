@@ -1,4 +1,3 @@
-// server/routes/signup.ts
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { z } from "zod";

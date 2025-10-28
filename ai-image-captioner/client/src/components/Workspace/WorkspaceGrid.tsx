@@ -34,7 +34,10 @@ export default function WorkspaceGrid({
 
         return (
           <div key={m.id} className="relative group">
-            <div className={selectionMode ? "pointer-events-none" : ""} aria-hidden={selectionMode}>
+            <div
+              className={selectionMode ? "pointer-events-none" : ""}
+              aria-hidden={selectionMode}
+            >
               <MediaCard
                 item={{
                   id: m.id,
@@ -70,6 +73,7 @@ export default function WorkspaceGrid({
                   rounded-xl
                   bg-transparent
                   pointer-events-auto
+                  cursor-pointer
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60
                 "
               >
@@ -82,7 +86,7 @@ export default function WorkspaceGrid({
                     grid place-items-center
                   "
                 >
-                  <span className="text-lg font-medium uppercase tracking-wide px-2.5 py-1.5 rounded bg-white/10">
+                  <span className="text-lg font-medium uppercase tracking-wide px-2.5 py-1.5 rounded">
                     Select
                   </span>
                 </div>

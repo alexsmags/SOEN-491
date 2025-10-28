@@ -41,7 +41,6 @@ export default function UploadDropzone({ onUpload, className = "" }: Props) {
           "flex flex-col items-center justify-center",
           "rounded-xl border-2 border-dashed transition cursor-pointer select-none",
           dragOver ? "border-white/50 bg-white/[0.04]" : "border-white/20 bg-white/[0.02]",
-          // keep a small minimum for tiny screens while still allowing full height
           "min-h-[16rem] overflow-hidden",
         ].join(" ")}
       >

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Footer from "../components/Footer";
+import Sidebar from "../components/Layout/Sidebar";
+import Topbar from "../components/Layout/Topbar";
+import Footer from "../components/Layout/Footer";
 import WorkspaceGrid from "../components/Workspace/WorkspaceGrid";
 import SkeletonGrid from "../components/UI/SkeletonGrid";
 import Pagination from "../components/UI/Pagination";
@@ -33,6 +33,12 @@ function hasValidPickerFlag(): boolean {
 function clearPickerFlag() {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(PICKER_KEY);
+}
+
+function getDevHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const id = localStorage.getItem("dev-user-id");
+  return id ? { "x-user-id": id } : {};
 }
 
 export default function WorkspacePage() {
@@ -108,6 +114,7 @@ export default function WorkspacePage() {
         `${SERVER_URL}/api/media?page=${p}&pageSize=${PAGE_SIZE}`,
         {
           credentials: "include",
+          headers: { ...getDevHeaders() },
         }
       );
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
@@ -185,8 +192,13 @@ export default function WorkspacePage() {
       const res = await fetch(`${SERVER_URL}/api/media/${id}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { ...getDevHeaders() },
       });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.error("DELETE failed", res.status, body);
+        throw new Error(`Delete failed (${res.status})`);
+      }
 
       setItems((prev) => prev.filter((x) => x.id !== id));
 

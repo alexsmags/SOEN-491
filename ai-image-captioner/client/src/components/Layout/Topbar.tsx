@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X, Menu } from "lucide-react";
 import UserMenu from "./UserMenu";
-import { useSession } from "../session";
+import { useSession } from "../../session";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:5000";
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL ?? "http://localhost:5173";

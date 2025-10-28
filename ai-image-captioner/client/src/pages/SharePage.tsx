@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Footer from "../components/Footer";
+import Sidebar from "../components/Layout/Sidebar";
+import Topbar from "../components/Layout/Topbar";
+import Footer from "../components/Layout/Footer";
 import { ImagePicker } from "../components/Share/ImagePicker";
 import { PreviewWithShare } from "../components/Share/PreviewWithShare";
 import { ShareModal } from "../components/Share/Modals/ShareModal";

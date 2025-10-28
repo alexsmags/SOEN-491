@@ -1,13 +1,19 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
-import Footer from "../components/Footer";
+import Sidebar from "../components/Layout/Sidebar";
+import Topbar from "../components/Layout/Topbar";
+import Footer from "../components/Layout/Footer";
 import UploadDropzone from "../components/Upload/UploadDropzone";
 import ToneSelect, { type ToneOption } from "../components/Upload/ToneSelect";
 import KeywordsInput from "../components/Upload/KeywordsInput";
 import CaptionResult from "../components/Upload/CaptionResult";
 import { generateCaption } from "../lib/caption";
+
+import StyleSection from "../components/Upload/StyleSelection";
+import HashtagsSection from "../components/Upload/HashtagsSelection";
+import MentionsLocationSection from "../components/Upload/MentionsLocationSection";
+import EmojisSection from "../components/Upload/EmojisSection";
+import type { Placement, Voice, LengthPref } from "../components/Upload/types";
 
 type View = "mobile" | "tablet" | "desktop";
 
@@ -36,7 +42,10 @@ function useView(): View {
   return view;
 }
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "";
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ??
+  import.meta.env.VITE_API_BASE ??
+  "";
 
 export default function UploadPage() {
   const view = useView();
@@ -66,9 +75,12 @@ export default function UploadPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [tone, setTone] = useState<ToneOption>("casual");
+
   const [keywords, setKeywords] = useState<string[]>([]);
+
   const [caption, setCaption] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -78,6 +90,24 @@ export default function UploadPage() {
 
   const [usedTone, setUsedTone] = useState<ToneOption | null>(null);
   const [usedKeywords, setUsedKeywords] = useState<string[] | null>(null);
+
+  const [includeHashtags, setIncludeHashtags] = useState(true);
+  const [includeMentions, setIncludeMentions] = useState(false);
+  const [location, setLocation] = useState("");
+
+  const [hashtags, setHashtags] = useState<string[]>([]);
+
+  const [handles, setHandles] = useState<string[]>([]);
+
+  const [includeEmojis, setIncludeEmojis] = useState(true);
+  const [emojiCount, setEmojiCount] = useState<number>(2);
+
+  const [hashtagsPlacement, setHashtagsPlacement] = useState<Placement>("end");
+  const [mentionsPlacement, setMentionsPlacement] = useState<Placement>("end");
+  const [emojiPlacement, setEmojiPlacement] = useState<Placement>("end");
+
+  const [voice, setVoice] = useState<Voice>("neutral");
+  const [lengthPref, setLengthPref] = useState<LengthPref>("medium");
 
   const [footerH, setFooterH] = useState(0);
   const [dropzoneKey, setDropzoneKey] = useState(0);
@@ -104,12 +134,51 @@ export default function UploadPage() {
     if (!file) return;
     setLoading(true);
     try {
-      const text = await generateCaption(tone, keywords);
+      const keywordsToSend = keywords.map((k) => k.replace(/^#/, ""));
+      const hashtagsToSend = hashtags.map((h) => h.replace(/^#/, ""));
+
+      const text = await generateCaption(file, tone, keywordsToSend, {
+        includeHashtags,
+        includeMentions,
+        location: location.trim(),
+        handles: handles.map((h) => h.replace(/^@+/, "")),
+        voice,
+        length: lengthPref,
+        hashtags: hashtagsToSend,
+
+        includeEmojis,
+        emojiCount,
+        emojiPlacement,
+        hashtagsPlacement,
+        mentionsPlacement,
+      });
+
       setCaption(text);
       setUsedTone(tone);
-      setUsedKeywords(keywords);
+      setUsedKeywords(keywordsToSend);
       setSaveDone(false);
       setSaveError(null);
+      setGenError(null);
+
+      console.log("[UploadPage][params]", {
+        tone,
+        keywords: keywordsToSend,
+        hashtags: hashtagsToSend,
+        includeHashtags,
+        includeMentions,
+        includeEmojis,
+        emojiCount,
+        placements: { hashtagsPlacement, mentionsPlacement, emojiPlacement },
+        location,
+        handles,
+        voice,
+        length: lengthPref,
+      });
+      console.log("[UploadPage][caption]", text);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Caption failed";
+      setGenError(msg);
+      setCaption(null);
     } finally {
       setLoading(false);
     }
@@ -188,6 +257,8 @@ export default function UploadPage() {
     setSaveDone(false);
     setSaveError(null);
     setSavedMediaId(null);
+    setHashtags([]);
+    setHandles([]);
     setDropzoneKey((k) => k + 1);
   };
 
@@ -219,10 +290,10 @@ export default function UploadPage() {
               Upload & Generate Caption
             </h1>
 
-            <div className="grid md:grid-cols-2 gap-0 md:gap-6 min-h:[80vh] items-stretch">
-              <section className="flex flex-col h-full min-h-[60vh] md:minh-[70vh] bg-white/[0.04] border border-white/10">
+            <div className="grid md:grid-cols-2 gap-0 md:gap-6 min-h-[80vh] items-stretch">
+              <section className="flex flex-col h-full min-h-[60vh] md:min-h-[70vh] bg-white/[0.04] border border-white/10">
                 <div className="flex-1 min-h-0 p-6 md:p-8">
-                  <div className="h-full min-h={[420]}px md:min-h-[560px] relative">
+                  <div className="h-full min-h-[420px] md:min-h-[560px] relative">
                     {file && (
                       <button
                         type="button"
@@ -242,7 +313,7 @@ export default function UploadPage() {
                     <UploadDropzone
                       key={dropzoneKey}
                       className={`h-full ${file ? "pointer-events-none" : ""}`}
-                      onUpload={(f) => {
+                      onUpload={(f /* file */) => {
                         setFile(f);
                         setCaption(null);
                         setUsedTone(null);
@@ -250,6 +321,7 @@ export default function UploadPage() {
                         setSaveDone(false);
                         setSaveError(null);
                         setSavedMediaId(null);
+                        setGenError(null);
                       }}
                     />
                   </div>
@@ -258,28 +330,76 @@ export default function UploadPage() {
 
               <aside className="self-stretch bg-white/[0.04] border border-white/10 p-6 md:p-8">
                 <h3 className="text-lg font-semibold mb-4">Parameters</h3>
-                <div className="space-y-5">
-                  <ToneSelect value={tone} onChange={setTone} />
-                  <KeywordsInput value={keywords} onChange={setKeywords} max={8} />
-                </div>
 
-                <div className="mt-6 grid gap-3">
-                  <button
-                    onClick={onGenerate}
-                    disabled={!file || loading}
-                    className="w-full rounded-xl px-4 py-3 border border-white/15 bg-[#364881] hover:bg-[#4d5ca1] transition shadow-sm disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-transparent animate-spin" />
-                        Generating…
-                      </span>
-                    ) : (
-                      "Generate Caption"
-                    )}
-                  </button>
+                <div className="space-y-6">
+                  {/* Style */}
+                  <StyleSection
+                    tone={tone}
+                    onToneChange={setTone}
+                    voice={voice}
+                    onVoiceChange={setVoice}
+                    lengthPref={lengthPref}
+                    onLengthPrefChange={setLengthPref}
+                    keywords={keywords}
+                    onKeywordsChange={setKeywords}
+                    ToneSelect={ToneSelect}
+                    KeywordsInput={KeywordsInput}
+                  />
 
-                  <p className="mt-1 text-xs text-white/60">Supported: PNG, JPG, JPEG. One image only.</p>
+                  {/* Hashtags */}
+                  <HashtagsSection
+                    hashtags={hashtags}
+                    onHashtagsChange={setHashtags}
+                    includeHashtags={includeHashtags}
+                    onIncludeHashtagsChange={setIncludeHashtags}
+                    placement={hashtagsPlacement}
+                    onPlacementChange={setHashtagsPlacement}
+                    KeywordsInput={KeywordsInput}
+                  />
+
+                  {/* Mentions & Location */}
+                  <MentionsLocationSection
+                    includeMentions={includeMentions}
+                    onIncludeMentionsChange={setIncludeMentions}
+                    handles={handles}
+                    onHandlesChange={setHandles}
+                    location={location}
+                    onLocationChange={setLocation}
+                    placement={mentionsPlacement}
+                    onPlacementChange={setMentionsPlacement}
+                    KeywordsInput={KeywordsInput}
+                  />
+
+                  {/* Emojis */}
+                  <EmojisSection
+                    includeEmojis={includeEmojis}
+                    onIncludeEmojisChange={setIncludeEmojis}
+                    emojiCount={emojiCount}
+                    onEmojiCountChange={setEmojiCount}
+                    placement={emojiPlacement}
+                    onPlacementChange={setEmojiPlacement}
+                  />
+
+                  {/* Actions */}
+                  <section className="space-y-2">
+                    <button
+                      onClick={onGenerate}
+                      disabled={!file || loading}
+                      className="w-full rounded-xl px-4 py-3 border border-white/15 bg-[#364881] hover:bg-[#4d5ca1] transition shadow-sm disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-transparent animate-spin" />
+                          Generating…
+                        </span>
+                      ) : (
+                        "Generate Caption"
+                      )}
+                    </button>
+
+                    {genError && <p className="text-xs text-red-400">{genError}</p>}
+                    <p className="text-xs text-white/60">Supported: PNG, JPG, JPEG. One image only.</p>
+                  </section>
                 </div>
               </aside>
             </div>

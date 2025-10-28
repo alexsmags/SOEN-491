@@ -6,10 +6,9 @@ import crypto from "crypto"
 
 export const storage = Router()
 
-// attach user via middleware later; for now this is the core presign logic
 const s3 = new S3Client({
   region: process.env.AWS_REGION!,
-  endpoint: process.env.S3_ENDPOINT, // optional for R2/Supabase
+  endpoint: process.env.S3_ENDPOINT,
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID!,
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
@@ -18,7 +17,7 @@ const s3 = new S3Client({
 
 storage.post("/presign", async (req, res) => {
   const parsed = z.object({
-    userId: z.string(),  // if you read it from session, remove this
+    userId: z.string(),
     mimeType: z.string(),
     size: z.number().int().positive(),
   }).safeParse(req.body)
