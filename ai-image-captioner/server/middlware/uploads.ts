@@ -7,18 +7,13 @@ import { UPLOAD_DIR, BASE_URL } from "../config/env.js";
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-/**
- * Serve /uploads with revalidation. Browsers can 304 when unchanged,
- * but will re-check each navigation so missing files 404 quickly.
- */
 export const uploadStatic = express.static(UPLOAD_DIR, {
-  maxAge: 0,            // immediately stale
+  maxAge: 0,
   immutable: false,
-  etag: true,           // allow 304s instead of full downloads
+  etag: true,
   setHeaders: (res) => {
     res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
     res.setHeader("Access-Control-Allow-Origin", "*");
-    // (Optional) help proxies/CDNs respect revalidation
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
   },
@@ -51,10 +46,6 @@ export function makePublicUploadUrl(filename: string): string {
   return `${base}/uploads/${name}`;
 }
 
-/**
- * Map a public /uploads URL (or absolute URL pointing to it)
- * back to an absolute file path within UPLOAD_DIR.
- */
 export function uploadsUrlToPath(imageUrl: string): string | null {
   try {
     if (!imageUrl || typeof imageUrl !== "string") return null;
