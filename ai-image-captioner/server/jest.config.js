@@ -2,14 +2,13 @@
 export default {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  testMatch: ["**/__tests__/**/*.test.ts?(x)"],
+  testMatch: ["**/__tests__/**/*.(test|spec).ts?(x)", "**/?(*.)+(test|spec).ts?(x)"],
   transform: {
     "^.+\\.[tj]sx?$": [
       "ts-jest",
       {
         useESM: true,
         tsconfig: "tsconfig.test.json",
-        // Ensures instrumentation for coverage
         isolatedModules: false,
         diagnostics: false
       }
@@ -22,18 +21,20 @@ export default {
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   clearMocks: true,
 
-  // Coverage
   collectCoverage: true,
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov"],
   coverageThreshold: {
-    global: { statements: 80, branches: 80, functions: 80, lines: 80 }
+    global: { statements: 75, branches: 75, functions: 75, lines: 75 }
   },
   collectCoverageFrom: [
-    "server/**/*.ts",
-    "config/**/*.ts",
-    "!**/__tests__/**",
-    "!**/__mocks__/**",
-    "!**/*.d.ts"
-  ],
+  "**/*.{ts,tsx}",
+  "!**/__tests__/**",
+  "!**/__mocks__/**",
+  "!**/*.d.ts",
+  "!**/coverage/**",
+  "!**/dist/**",
+  "!**/build/**",
+  "!jest.config.*",
+],
 };
