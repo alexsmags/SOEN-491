@@ -1,3 +1,18 @@
-# Ignore environment files
+# Coverage
+coverage/
+lcov-report/
+*.lcov
+server/coverage/
+server/lcov-report/
+server/*.lcov
+
+# Node
+node_modules/
+server/node_modules/
+
+# Env
 .env
-*/.env
+server/.env
+
+# Logs
+*.log

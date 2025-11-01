@@ -5,3 +5,11 @@ node_modules/
 # optional extras
 .cache/
 dist/
+
+# Test coverage reports
+coverage/
+lcov-report/
+*.lcov
+
+
+.env

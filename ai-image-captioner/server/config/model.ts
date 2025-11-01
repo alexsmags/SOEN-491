@@ -2,7 +2,7 @@ import { env as TEnv, pipeline } from "@xenova/transformers";
 import path from "path";
 
 // HF token setup
-const rawToken = process.env.HF_TOKEN || process.env.HUGGING_FACE_HUB_TOKEN || "";
+const rawToken = process.env.HF_TOKEN || "";
 const hfToken = /^hf_[A-Za-z0-9]+$/.test(rawToken) ? rawToken : "";
 if (hfToken) {
   (TEnv as any).HF_TOKEN = hfToken;
