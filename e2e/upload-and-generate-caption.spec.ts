@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 
-// ✅ This tells Playwright to use your saved login session
 test.use({ storageState: 'e2e/storage/auth.json' });
 
 test('upload image → generate caption → caption appears', async ({ page }) => {

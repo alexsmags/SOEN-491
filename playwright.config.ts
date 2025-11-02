@@ -7,10 +7,7 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   reporter: [
     ['list'],
-    [
-      'html',
-      { outputFolder: 'ai-image-captioner/playwright-report', open: 'never' },
-    ],
+    ['html', { open: 'never' }],
   ],
   use: {
     baseURL: 'http://localhost:5173',
