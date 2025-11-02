@@ -14,10 +14,10 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://localhost:5173',
-    trace: 'on',              // ✅ always collect trace
-    video: 'on',              // ✅ record video for all tests
-    screenshot: 'on',         // ✅ take screenshots for all tests
-    actionTimeout: 15_000,    // extra safety for slow UI
+    trace: 'on',
+    video: 'on',
+    screenshot: 'on',
+    actionTimeout: 15_000,
   },
   projects: [
     {
@@ -29,7 +29,7 @@ export default defineConfig({
     {
       command: 'npm run dev',
       cwd: 'ai-image-captioner/server',
-      port: 5000, // ✅ match your .env PORT
+      port: 5000,
       reuseExistingServer: !process.env.CI,
       env: {
         NODE_ENV: 'e2e',
