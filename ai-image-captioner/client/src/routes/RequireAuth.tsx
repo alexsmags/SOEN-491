@@ -7,7 +7,6 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const { user, loading } = useSession();
   const location = useLocation();
 
-  // ✅ E2E mode detection (no Node types needed)
   const mode =
     import.meta.env.MODE ||
     import.meta.env.VITE_MODE ||

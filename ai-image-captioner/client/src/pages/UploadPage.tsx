@@ -159,22 +159,6 @@ export default function UploadPage() {
       setSaveDone(false);
       setSaveError(null);
       setGenError(null);
-
-      console.log("[UploadPage][params]", {
-        tone,
-        keywords: keywordsToSend,
-        hashtags: hashtagsToSend,
-        includeHashtags,
-        includeMentions,
-        includeEmojis,
-        emojiCount,
-        placements: { hashtagsPlacement, mentionsPlacement, emojiPlacement },
-        location,
-        handles,
-        voice,
-        length: lengthPref,
-      });
-      console.log("[UploadPage][caption]", text);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Caption failed";
       setGenError(msg);
@@ -266,6 +250,7 @@ export default function UploadPage() {
     <div
       className="bg-[#0C0F14] text-white overflow-x-hidden"
       style={{ "--sidebar-w": sidebarWidth } as React.CSSProperties}
+      data-testid="upload-page"
     >
       <Sidebar
         mode={isOverlay ? "overlay" : "docked"}
@@ -304,12 +289,13 @@ export default function UploadPage() {
                         aria-label="Clear image"
                         title="Clear image"
                         className="absolute right-3 top-3 z-20 h-8 w-8 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center text-white"
+                        data-testid="clear-image"
                       >
                         <span className="text-lg leading-none">×</span>
                       </button>
                     )}
 
-                    {/* Dropzone */}
+                    {/* Dropzone (its internal <input type="file"> will be targeted by tests) */}
                     <UploadDropzone
                       key={dropzoneKey}
                       className={`h-full ${file ? "pointer-events-none" : ""}`}
@@ -386,6 +372,7 @@ export default function UploadPage() {
                       onClick={onGenerate}
                       disabled={!file || loading}
                       className="w-full rounded-xl px-4 py-3 border border-white/15 bg-[#364881] hover:bg-[#4d5ca1] transition shadow-sm disabled:opacity-50"
+                      data-testid="generate-btn"
                     >
                       {loading ? (
                         <span className="inline-flex items-center gap-2">
@@ -397,7 +384,7 @@ export default function UploadPage() {
                       )}
                     </button>
 
-                    {genError && <p className="text-xs text-red-400">{genError}</p>}
+                    {genError && <p className="text-xs text-red-400" data-testid="error-text">{genError}</p>}
                     <p className="text-xs text-white/60">Supported: PNG, JPG, JPEG. One image only.</p>
                   </section>
                 </div>
@@ -405,7 +392,7 @@ export default function UploadPage() {
             </div>
 
             {caption && (
-              <div className="mt-6 px-4 md:px-6">
+              <div className="mt-6 px-4 md:px-6" data-testid="caption-output" aria-live="polite">
                 <CaptionResult
                   caption={caption}
                   tone={(usedTone ?? tone) as string}
