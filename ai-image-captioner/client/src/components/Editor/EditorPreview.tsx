@@ -58,19 +58,21 @@ export default function EditorPreview({
   };
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6" data-testid="editor-preview">
       <div
         ref={frameRef}
         className="relative mx-auto w-full max-w-[820px] rounded-xl bg-black/60 border-8 border-[#2a2f3a] overflow-hidden "
         style={{
           aspectRatio: aspectFromNat ?? "4 / 3",
         }}
+        data-testid="editor-frame"
       >
         <img
           src={image}
           alt="Preview"
           className="absolute inset-0 w-full h-full object-contain"
           draggable={false}
+          data-testid="editor-image"
         />
 
         <div
@@ -81,6 +83,7 @@ export default function EditorPreview({
           )}
           style={bubbleStyle}
           {...bubbleProps}
+          data-testid="editor-bubble"
         >
           {caption}
         </div>
@@ -91,6 +94,7 @@ export default function EditorPreview({
           onClick={() => setModalOpen(true)}
           className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-lg bg-black/70 backdrop-blur border border-white/15 px-2.5 py-1.5 text-xs text-white/90 hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/30"
           title="Download image"
+          data-testid="editor-download-btn"
         >
           <Download size={14} />
           Download

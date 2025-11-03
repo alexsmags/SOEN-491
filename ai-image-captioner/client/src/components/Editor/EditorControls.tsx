@@ -76,6 +76,7 @@ export default function EditorControls({
         overflow-y-auto
         pb-[var(--footer-h)]
       "
+      data-testid="editor-controls"
     >
       <h3 className="text-lg font-bold mb-2">Caption & Style Editor</h3>
 
@@ -85,6 +86,7 @@ export default function EditorControls({
         value={caption}
         onChange={(e) => setCaption(e.target.value)}
         className="w-full h-24 resize-none rounded-lg bg-white/5 border border-white/10 p-3 text-sm outline-none focus:border-white/20"
+        data-testid="editor-caption-input"
       />
 
       {/* Font */}
@@ -93,6 +95,7 @@ export default function EditorControls({
         value={fontFamily}
         onChange={(e) => setFontFamily(e.target.value)}
         className="w-full appearance-none rounded-lg bg-[#111] text-white border border-white/10 p-2.5 text-sm outline-none focus:border-white/20"
+        data-testid="editor-font-select"
       >
         <option>Arial</option>
         <option>Inter</option>
@@ -106,7 +109,7 @@ export default function EditorControls({
       <div className="mt-4">
         <div className="flex items-center justify-between text-sm text-white/70 mb-1">
           <span>Font Size</span>
-          <span>{fontSize}</span>
+          <span data-testid="editor-fontsize-value">{fontSize}</span>
         </div>
         <input
           type="range"
@@ -115,13 +118,14 @@ export default function EditorControls({
           value={fontSize}
           onChange={(e) => setFontSize(Number(e.target.value))}
           className="w-full"
+          data-testid="editor-fontsize-range"
         />
       </div>
 
       {/* Colors */}
       <div className="mt-4">
         <div className="text-sm text-white/70 mb-2">Text Color</div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-testid="editor-color-swatch-list">
           {COLORS.map((c) => (
             <button
               key={c}
@@ -129,6 +133,8 @@ export default function EditorControls({
               className="w-6 h-6 rounded-full border border-white/10"
               style={{ backgroundColor: c }}
               aria-label={`Set color ${c}`}
+              data-testid="editor-color-swatch"
+              data-color={c}
             />
           ))}
         </div>
@@ -138,14 +144,20 @@ export default function EditorControls({
       <div className="mt-5">
         <div className="text-sm text-white/70 mb-2">Text Alignment</div>
         <div className="grid grid-cols-3 gap-2">
-          <IconToggle active={align === "left"} onClick={() => applyAlign("left")} Icon={AlignLeft} />
-          <IconToggle active={align === "center"} onClick={() => applyAlign("center")} Icon={AlignCenter} />
-          <IconToggle active={align === "right"} onClick={() => applyAlign("right")} Icon={AlignRight} />
+          <IconToggle active={align === "left"} onClick={() => applyAlign("left")} Icon={AlignLeft} title="Align left" />
+          <IconToggle active={align === "center"} onClick={() => applyAlign("center")} Icon={AlignCenter} title="Align center" />
+          <IconToggle active={align === "right"} onClick={() => applyAlign("right")} Icon={AlignRight} title="Align right" />
+        </div>
+        <div className="sr-only" data-testid="editor-align-value">{align}</div>
+        <div className="grid grid-cols-3 gap-2 mt-2" aria-hidden>
+          <button data-testid="editor-align-left"  className="hidden" onClick={() => applyAlign("left")} />
+          <button data-testid="editor-align-center" className="hidden" onClick={() => applyAlign("center")} />
+          <button data-testid="editor-align-right" className="hidden" onClick={() => applyAlign("right")} />
         </div>
       </div>
 
       {/* Position */}
-      <div className="mt-5">
+      <div className="mt-5" data-testid="editor-position-controls">
         <div className="text-sm text-white/70 mb-2">Caption Position</div>
         <div className="grid grid-cols-3 gap-2">
           <IconButton onClick={() => nudge(-NUDGE, -NUDGE)} Icon={ArrowUpLeft}  title="Up-Left" />
@@ -168,6 +180,7 @@ export default function EditorControls({
           checked={showBg}
           onChange={(e) => setShowBg(e.target.checked)}
           className="accent-[#364881]"
+          data-testid="editor-toggle-bg"
         />
         <label htmlFor="show-bg" className="text-sm text-white/80">Show Caption Background</label>
       </div>
@@ -176,7 +189,7 @@ export default function EditorControls({
         <>
           <div className="mt-3">
             <div className="text-sm text-white/70 mb-2">Background Color</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" data-testid="editor-bg-swatch-list">
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -184,6 +197,8 @@ export default function EditorControls({
                   className="w-6 h-6 rounded-full border border-white/10"
                   style={{ backgroundColor: c }}
                   aria-label={`Set background ${c}`}
+                  data-testid="editor-bg-swatch"
+                  data-color={c}
                 />
               ))}
             </div>
@@ -201,6 +216,7 @@ export default function EditorControls({
               value={bgOpacity}
               onChange={(e) => setBgOpacity(Number(e.target.value))}
               className="w-full"
+              data-testid="editor-bg-opacity"
             />
           </div>
         </>
@@ -213,6 +229,7 @@ export default function EditorControls({
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 transition disabled:opacity-50"
             onClick={onSaveImage}
             disabled={savingImage}
+            data-testid="editor-save-image-btn"
           >
             {saveImageSuccess ? <Check size={16} /> : <ImageDown size={16} />}
             {saveImageSuccess ? "Success" : (savingImage ? "Saving image…" : "Save Image to Workspace")}
@@ -222,7 +239,7 @@ export default function EditorControls({
 
       {/* Actions */}
       {showActionRow && (
-        <div className="mt-4 flex justify-center gap-3 flex-wrap pb-4">
+        <div className="mt-4 flex justify-center gap-3 flex-wrap pb-4" data-testid="editor-actions">
           <button
             className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold shadow-sm transition disabled:opacity-50
               ${saveSuccess
@@ -231,6 +248,7 @@ export default function EditorControls({
             onClick={onSave}
             disabled={saving}
             title="Save caption/style/position"
+            data-testid="editor-save-btn"
           >
             {saveSuccess ? <Check size={16} /> : <Save size={16} />}
             {saveSuccess ? "Success" : (saving ? "Saving…" : "Save")}
@@ -240,6 +258,7 @@ export default function EditorControls({
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 transition"
             onClick={() => console.log("Share")}
             title="Share"
+            data-testid="editor-share-btn"
           >
             <Share2 size={16} /> Share
           </button>
@@ -250,6 +269,7 @@ export default function EditorControls({
               navigator.clipboard.writeText(caption).catch(() => undefined);
             }}
             title="Copy caption"
+            data-testid="editor-copy-btn"
           >
             <Copy size={16} /> Copy
           </button>
