@@ -33,7 +33,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (blocking) setLoading(true);
         const data = await fetchMe(ac.signal);
         setUser(data?.user ?? null);
-      } catch {
+      } catch (err) {
+        console.error("Failed to refresh session:", err);
       } finally {
         if (blocking) setLoading(false);
         setHydrated(true);
