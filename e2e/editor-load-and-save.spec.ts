@@ -6,26 +6,29 @@ test.use({ storageState: 'e2e/storage/auth.json' });
 test('editor: load existing media → edit → save', async ({ page }) => {
   const filePath = path.resolve(__dirname, 'fixtures', 'test.png');
 
-  await page.route('**/api/media/m1', route =>
-    route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        id: 'm1',
-        imageUrl: '/fixtures/test.png',
-        caption: 'initial cap',
-        fontFamily: 'Arial',
-        fontSize: 24,
-        textColor: '#FFFFFF',
-        align: 'center',
-        showBg: true,
-        bgColor: '#3B3F4A',
-        bgOpacity: 0.8,
-        posX: 100,
-        posY: 120
-      }),
-    })
-  );
+  await page.route('**/api/media/m1', route => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          id: 'm1',
+          imageUrl: '/fixtures/test.png',
+          caption: 'initial cap',
+          fontFamily: 'Arial',
+          fontSize: 24,
+          textColor: '#FFFFFF',
+          align: 'center',
+          showBg: true,
+          bgColor: '#3B3F4A',
+          bgOpacity: 0.8,
+          posX: 100,
+          posY: 120,
+        }),
+      });
+    }
+    return route.fallback();
+  });
 
   await page.route('**/fixtures/test.png', async route => {
     const method = route.request().method();
@@ -53,7 +56,8 @@ test('editor: load existing media → edit → save', async ({ page }) => {
 
   await page.goto('/editor?id=m1');
 
-  await expect(page.getByTestId('editor-frame')).toBeVisible();
+  await expect(page.getByTestId('editor-image')).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId('editor-frame')).toBeVisible({ timeout: 10000 });
   await expect(page.getByTestId('editor-controls')).toBeVisible();
 
   const captionInput = page.getByTestId('editor-caption-input');
@@ -63,7 +67,7 @@ test('editor: load existing media → edit → save', async ({ page }) => {
   await fsRange.fill('28');
   await expect(page.getByTestId('editor-fontsize-value')).toHaveText('28');
 
-  await page.getByTitle('Align right').click();
+  await page.getByTitle('Align right', { exact: true }).click();
 
   const putPromise = page.waitForRequest(req => {
     try {
@@ -78,6 +82,7 @@ test('editor: load existing media → edit → save', async ({ page }) => {
 
   const putReq = await putPromise;
   const payload = putReq.postDataJSON() as any;
+
   expect(payload.caption).toBe('edited cap');
   expect(payload.fontSize).toBe(28);
   expect(['left', 'center', 'right']).toContain(payload.align);
