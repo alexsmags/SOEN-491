@@ -28,12 +28,20 @@ export default function WorkspaceGrid({
   onSelect,
 }: Props) {
   return (
-    <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div
+      className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      data-testid="workspace-grid"
+    >
       {items.map((m) => {
         const align = normalizeAlign(m.align);
 
         return (
-          <div key={m.id} className="relative group">
+          <div
+            key={m.id}
+            className="relative group"
+            data-testid="workspace-card"
+            data-media-id={m.id}
+          >
             <div
               className={selectionMode ? "pointer-events-none" : ""}
               aria-hidden={selectionMode}
@@ -76,6 +84,7 @@ export default function WorkspaceGrid({
                   cursor-pointer
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60
                 "
+                data-testid="workspace-card-select"
               >
                 <div
                   className="

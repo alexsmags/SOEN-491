@@ -234,6 +234,7 @@ export default function WorkspacePage() {
           return collapsed ? "4rem" : "16rem";
         }, [view, collapsed, mobileOpen]),
       }}
+      data-testid="workspace-page"
     >
       <Sidebar
         mode={isOverlay ? "overlay" : "docked"}
@@ -259,10 +260,10 @@ export default function WorkspacePage() {
           onMobileToggle={() => setMobileOpen((o) => !o)}
         />
 
-        <main className="flex-grow pt-14 px-6 md:px-10 pb-32 bg-black">
+        <main className="flex-grow pt-14 px-6 md:px-10 pb-32 bg-black" data-testid="workspace-main">
           <section className="mt-6 md:mt-10">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
+              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight" data-testid="workspace-title">
                 {pickerActive ? "Select an Image" : "My Workspace"}
               </h1>
               <button
@@ -271,6 +272,7 @@ export default function WorkspacePage() {
                 disabled={loading}
                 aria-busy={loading}
                 aria-live="polite"
+                data-testid="workspace-refresh"
               >
                 <RefreshCcw
                   className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -281,11 +283,15 @@ export default function WorkspacePage() {
             </div>
 
             {loading ? (
-              <SkeletonGrid count={PAGE_SIZE} />
+              <div data-testid="skeleton-grid">
+                <SkeletonGrid count={PAGE_SIZE} />
+              </div>
             ) : err ? (
-              <div className="mt-12 text-sm text-red-400">{err}</div>
+              <div className="mt-12 text-sm text-red-400" data-testid="workspace-error">
+                {err}
+              </div>
             ) : items.length === 0 ? (
-              <div className="mt-12 text-sm text-white/60">
+              <div className="mt-12 text-sm text-white/60" data-testid="workspace-empty">
                 No items yet. Save from the Upload page.
               </div>
             ) : (

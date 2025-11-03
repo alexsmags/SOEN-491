@@ -405,6 +405,7 @@ export default function EditorPage() {
         ["--topbar-h" as string]: "48px",
         ["--footer-h" as string]: "96px",
       }}
+      data-testid="editor-page"
     >
       <Sidebar
         mode={isOverlay ? "overlay" : "docked"}
@@ -420,10 +421,10 @@ export default function EditorPage() {
       >
         <Topbar isOverlay={isOverlay} mobileOpen={mobileOpen} onMobileToggle={() => setMobileOpen((o) => !o)} />
 
-        <main className="h-full min-h-0 bg-black overflow-visible lg:overflow-auto pt-[var(--topbar-h)]">
-          <section className="min-h-full flex flex-col lg:flex-row">
+        <main className="h-full min-h-0 bg-black overflow-visible lg:overflow-auto pt-[var(--topbar-h)]" data-testid="editor-main">
+          <section className="min-h-full flex flex-col lg:flex-row" data-testid="editor-sections">
             {/* Left (preview) */}
-            <div className="flex-1 min-h-full flex items-center justify-center border-r border-white/10 bg-black pb-[var(--footer-h)]">
+            <div className="flex-1 min-h-full flex items-center justify-center border-r border-white/10 bg-black pb-[var(--footer-h)]" data-testid="editor-preview-pane">
               <div className="w-full max-w-[820px] p-4 md:p-6">
                 {imageUrl && nat ? (
                   <EditorPreview
@@ -441,7 +442,7 @@ export default function EditorPage() {
                     }}
                   />
                 ) : (
-                  <div className="aspect-[4/3] w-full border-2 border-dashed border-white/10 bg-white/[0.03] rounded-xl grid place-items-center px-6">
+                  <div className="aspect-[4/3] w-full border-2 border-dashed border-white/10 bg-white/[0.03] rounded-xl grid place-items-center px-6" data-testid="editor-empty-state">
                     <div className="text-center">
                       <p className="text-lg font-semibold">No image loaded</p>
                       <p className="text-sm text-white/60 mt-1">
@@ -457,6 +458,7 @@ export default function EditorPage() {
                           navigate(`/workspace?picker=1&return=${encodeURIComponent(returnUrl)}`);
                         }}
                         className="mt-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-sm"
+                        data-testid="editor-choose-from-workspace-btn"
                       >
                         Choose from Workspace
                       </button>
@@ -470,6 +472,7 @@ export default function EditorPage() {
             <div
               className="w-full lg:w-[400px] min-h-0 border-white/10 bg-black overflow-y-auto"
               style={{ height: "calc(100svh - var(--topbar-h) - var(--footer-h))" }}
+              data-testid="editor-controls-pane"
             >
               <EditorControls
                 caption={caption}
@@ -508,7 +511,10 @@ export default function EditorPage() {
       </div>
 
       {savedMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl bg-green-600/90 px-4 py-2 text-sm font-medium shadow-lg">
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl bg-green-600/90 px-4 py-2 text-sm font-medium shadow-lg"
+          data-testid="editor-toast"
+        >
           <CheckCircle size={16} />
           {savedMsg}
         </div>
