@@ -24,6 +24,7 @@ export default function UploadDropzone({ onUpload, className = "" }: Props) {
       <div
         role="button"
         tabIndex={0}
+        data-testid="dropzone"
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
         onDragOver={(e) => {
@@ -48,6 +49,7 @@ export default function UploadDropzone({ onUpload, className = "" }: Props) {
           <img
             src={preview}
             alt="Preview"
+            data-testid="preview-image"
             className="w-full h-full object-contain rounded-lg"
           />
         ) : (
@@ -68,11 +70,13 @@ export default function UploadDropzone({ onUpload, className = "" }: Props) {
           </div>
         )}
 
+        {/* 👇 Added data-testid for Playwright */}
         <input
           ref={inputRef}
           type="file"
           accept="image/*"
           className="hidden"
+          data-testid="file-input"
           onChange={(e) => setFile(e.target.files?.[0])}
         />
       </div>
