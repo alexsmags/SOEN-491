@@ -55,22 +55,16 @@ const looksBadMock = jest.fn<boolean, [string, string]>(() => false);
 const ruleBasedCaptionMock = jest.fn<string, [string, any]>(
   (core: string) => `${core} 🏖️ 🌅 #beachlife`
 );
-const extractEmojisOnlyMock = jest.fn<string[], [string, number]>().mockReturnValue(["🏖️", "🌅"]);
 
 jest.doMock("../../utils/textUtils", () => ({
   looksBad: looksBadMock,
   ruleBasedCaption: ruleBasedCaptionMock,
-  extractEmojisOnly: extractEmojisOnlyMock,
   __esModule: true,
 }));
 
 import fs from "fs";
-const writeFileSpy = jest
-  .spyOn(fs.promises, "writeFile")
-  .mockImplementation(async () => {});
-const unlinkSpy = jest
-  .spyOn(fs.promises, "unlink")
-  .mockImplementation(async () => {});
+const writeFileSpy = jest.spyOn(fs.promises, "writeFile").mockImplementation(async () => {});
+const unlinkSpy = jest.spyOn(fs.promises, "unlink").mockImplementation(async () => {});
 
 import router from "../../routes/caption";
 import type { Request, Response, NextFunction } from "express";
@@ -246,5 +240,101 @@ describe("POST /caption handler", () => {
     expect(out.caption).toBe("A warm sunset over the beach.");
     expect(out.enhanced).toBe("A warm sunset over the beach.");
     expect(out.meta.source).toBe("rule-based");
+  });
+
+  it("parses keywords and hashtags from CSV strings and JSON; handles include flags and placements normalization", async () => {
+    const body = {
+      keywords: "k1, k2 , k3",
+      hashtags: "tag1, tag2 ,tag3",
+      includeHashtags: "false",
+      includeMentions: "true",
+      handles: "@a, @b",
+      voice: "neutral",
+      length: "medium",
+      includeEmojis: "false",
+      emojiCount: "7",
+      hashtagsPlacement: "INVALID",
+      mentionsPlacement: "middle",
+      emojiPlacement: "INVALID",
+    };
+    const file = { buffer: Buffer.from("img"), originalname: "" };
+    const { req, res, next, getJson } = mockReqRes(body, file);
+
+    await handler(req, res, next);
+
+    const out = getJson();
+    expect(out.caption).toBe("A warm sunset over the beach.");
+    expect(out.enhanced.startsWith("Chill vibes at the beach")).toBe(true);
+
+    const call = ruleBasedCaptionMock.mock.calls[ruleBasedCaptionMock.mock.calls.length - 1];
+    const opts = call[1];
+    expect(opts.includeHashtags).toBe(false);
+    expect(opts.includeMentions).toBe(true);
+    expect(opts.hashtagsPlacement).toBe("end");
+    expect(opts.mentionsPlacement).toBe("middle");
+    expect(opts.emojiPlacement).toBe("end");
+
+    const tmpArg: any = writeFileSpy.mock.calls.slice(-1)[0][0];
+    const ext = path.extname(tmpArg).toLowerCase();
+    expect(ext === "" || ext === ".jpg").toBe(true);
+
+    expect(out.meta.used_hashtags).toEqual([]);
+    expect(out.meta.used_emojis).toEqual([]);
+  });
+
+  it("clamps emojiCount and generates up to 8 emojis when includeEmojis=true", async () => {
+    const body = {
+      includeEmojis: "true",
+      emojiCount: "100",
+      includeHashtags: "true",
+      hashtags: JSON.stringify(["x"]),
+    };
+    const file = { buffer: Buffer.from("img"), originalname: "a.png" };
+    const { req, res, next, getJson } = mockReqRes(body, file);
+    await handler(req, res, next);
+    const out = getJson();
+    expect(out.meta.used_emojis.length).toBe(8);
+    expect(out.meta.used_hashtags).toEqual(["x"]);
+  });
+
+  it("handles invalid JSON inputs for keywords/hashtags/handles", async () => {
+    const body = {
+      keywords: "{bad",
+      hashtags: "{bad",
+      handles: "{bad",
+      includeHashtags: "true",
+      includeMentions: "true",
+    };
+    const file = { buffer: Buffer.from("img"), originalname: "b.png" };
+    const { req, res, next } = mockReqRes(body, file);
+
+    await handler(req, res, next);
+
+    const call = ruleBasedCaptionMock.mock.calls[ruleBasedCaptionMock.mock.calls.length - 1];
+    const opts = call[1];
+    expect(opts.keywords).toEqual([]);
+    expect(opts.hashtags).toEqual(["{bad"]);
+    expect(opts.handles).toEqual(["{bad"]);
+  });
+
+  it("supports array inputs for keywords/hashtags/handles", async () => {
+    const body = {
+      keywords: ["k1", "k2"],
+      hashtags: ["h1", "h2"],
+      handles: ["@a", "@b"],
+      includeHashtags: "true",
+      includeMentions: "true",
+      includeEmojis: "true",
+      emojiCount: "1",
+    };
+    const file = { buffer: Buffer.from("img"), originalname: "c.png" };
+    const { req, res, next, getJson } = mockReqRes(body, file);
+
+    await handler(req, res, next);
+
+    const out = getJson();
+    expect(out.meta.used_keywords).toEqual(["k1", "k2"]);
+    expect(out.meta.used_hashtags).toEqual(["h1", "h2"]);
+    expect(out.meta.used_emojis.length).toBe(1);
   });
 });
