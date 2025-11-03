@@ -38,7 +38,7 @@ export default function EmojisSection({
           <input
             type="number"
             min={1}
-            max={8}
+            max={3}
             value={emojiCount}
             onChange={(e) => {
               const n = Number(e.target.value) || 1;

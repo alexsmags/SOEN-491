@@ -1,10 +1,10 @@
 export type Placement = "beginning" | "middle" | "end";
 
-export function tagify(word: string) {
+export function tagify(word: string): string {
   return "#" + word.toLowerCase().replace(/[^a-z0-9]+/gi, "").replace(/^#+/, "");
 }
 
-export function ensureVoice(text: string, voice: "i" | "we" | "neutral") {
+export function ensureVoice(text: string, voice: "i" | "we" | "neutral"): string {
   if (voice === "neutral") return text;
   const hasI = /\b(I|I'm|I’ve|I’m|me|my|mine)\b/i.test(text);
   const hasWe = /\b(we|we're|we’ve|us|our|ours)\b/i.test(text);
@@ -13,7 +13,7 @@ export function ensureVoice(text: string, voice: "i" | "we" | "neutral") {
   return text;
 }
 
-export function trimToLength(text: string, len: "short" | "medium" | "long") {
+export function trimToLength(text: string, len: "short" | "medium" | "long"): string {
   const maxWords = len === "short" ? 12 : len === "medium" ? 25 : 60;
   const words = text.split(/\s+/).filter(Boolean);
   return words.length <= maxWords ? text : words.slice(0, maxWords).join(" ").trim();
@@ -49,7 +49,7 @@ export function ruleBasedCaption(
     hashtagsPlacement: Placement;
     mentionsPlacement: Placement;
   }
-) {
+): string {
   let core = baseOrModel.replace(/^a\s+/i, "").replace(/^the\s+/i, "").trim();
 
   const mentionsArr =
@@ -99,7 +99,7 @@ export function ruleBasedCaption(
   return out;
 }
 
-export function looksBad(s: string, prompt: string) {
+export function looksBad(s: string, prompt: string): boolean {
   if (!s) return true;
   if (s.length < 3) return true;
   if (s.toLowerCase().startsWith(prompt.toLowerCase())) return true;
@@ -121,4 +121,30 @@ export function extractEmojisOnly(s: string, max = 5): string[] {
     /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t)
   );
   return emojiish.slice(0, Math.max(0, max));
+}
+
+const STOP = new Set<string>(
+  ("a,an,the,of,for,to,at,in,on,with,from,by,and,or,as,is,are,was,were,be,been,being,it's,its,that,this,those,these," +
+    "into,over,under,after,before,about,off,up,down,out,so,than,too,very,just,not,no,yes,if,then,when,while,can,will," +
+    "your,our,my,their,his,her,them,us,we,i,me,you,they,he,she,it").split(",")
+);
+
+export function extractTopKeywords(text: string, max = 8): string[] {
+  const counts = new Map<string, number>();
+  text
+    .toLowerCase()
+    .replace(/[#@][\w-]+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .forEach((w) => {
+      if (STOP.has(w)) return;
+      if (w.length < 3) return;
+      counts.set(w, (counts.get(w) || 0) + 1);
+    });
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([w]) => w);
 }

@@ -5,10 +5,21 @@ jest.mock("uuid", () => ({ v4: jest.fn(() => "uuid-mock") }));
 
 jest.doMock("../../middlware/auth", () => ({
   requireUserId: jest.fn(async () => "u1"),
+  __esModule: true,
+}));
+
+jest.doMock("../../utils/emoji", () => ({
+  __esModule: true,
+  suggestEmojisByEmbedding: jest.fn(async (_embedder, _text, desiredCount = 2) => {
+    const base = ["🏖️", "🌅"];
+    const n = Math.max(1, Math.min(8, Number(desiredCount) || 2));
+    return Array.from({ length: n }, (_, i) => base[i % base.length]);
+  }),
 }));
 
 const capModelId = "IMG-1";
 const genModelId = "TXT-1";
+const embModelId = "EMB-1";
 
 const getCaptionerMock = jest.fn(async () => [
   { generated_text: "A warm sunset over the beach." },
@@ -28,11 +39,15 @@ const genFn = jest.fn(async (prompt: string) => {
 
 const getGeneratorMock = jest.fn(async () => genFn);
 
+const embedderFn = jest.fn(async (_input: string) => ({ data: [[1, 0]] }));
+(embedderFn as any).model = { modelId: embModelId };
+
 jest.doMock("../../config/model", () => ({
   MODEL_ID: "IMG-DEFAULT",
   GEN_MODEL_ID: "TXT-DEFAULT",
   getCaptioner: jest.fn(async () => getCaptionerMock),
   getGenerator: getGeneratorMock,
+  getEmbedder: jest.fn(async () => embedderFn),
   __esModule: true,
 }));
 
@@ -40,10 +55,9 @@ const looksBadMock = jest.fn<boolean, [string, string]>(() => false);
 const ruleBasedCaptionMock = jest.fn<string, [string, any]>(
   (core: string) => `${core} 🏖️ 🌅 #beachlife`
 );
-const extractEmojisOnlyMock = jest.fn<string[], [string, number]>();
-extractEmojisOnlyMock.mockReturnValue(["🏖️", "🌅"]);
+const extractEmojisOnlyMock = jest.fn<string[], [string, number]>().mockReturnValue(["🏖️", "🌅"]);
 
-jest.doMock("../../utils/textUtils.js", () => ({
+jest.doMock("../../utils/textUtils", () => ({
   looksBad: looksBadMock,
   ruleBasedCaption: ruleBasedCaptionMock,
   extractEmojisOnly: extractEmojisOnlyMock,
@@ -168,7 +182,6 @@ describe("POST /caption handler", () => {
     expect(unlinkSpy).toHaveBeenCalledWith(tmpPath);
 
     expect(looksBadMock).toHaveBeenCalled();
-    expect(extractEmojisOnlyMock).toHaveBeenCalledWith(expect.any(String), 2);
     expect(ruleBasedCaptionMock).toHaveBeenCalled();
 
     expect(out.meta.image_caption_model).toBe(capModelId);
@@ -182,6 +195,7 @@ describe("POST /caption handler", () => {
       mentionsPlacement: "end",
       emojiPlacement: "end",
     });
+    expect(out.meta.embed_model).toBe(embModelId);
   });
 
   it("falls back to rule-based when generated core looks bad", async () => {
