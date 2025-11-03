@@ -13,6 +13,7 @@ import StyleSection from "../components/Upload/StyleSelection";
 import HashtagsSection from "../components/Upload/HashtagsSelection";
 import MentionsLocationSection from "../components/Upload/MentionsLocationSection";
 import EmojisSection from "../components/Upload/EmojisSection";
+import UploadErrorModal from "../components/Upload/Modals/UploadErrorModal.tsx";
 import type { Placement, Voice, LengthPref } from "../components/Upload/types";
 
 type View = "mobile" | "tablet" | "desktop";
@@ -47,7 +48,6 @@ const SERVER_URL =
   import.meta.env.VITE_API_BASE ??
   "";
 
-/** Compute target's scrollTop within a container, walking offsetParents. */
 function offsetTopWithin(container: HTMLElement, target: HTMLElement): number {
   let top = 0;
   let node: HTMLElement | null = target;
@@ -58,12 +58,10 @@ function offsetTopWithin(container: HTMLElement, target: HTMLElement): number {
   return top;
 }
 
-/** Returns true if this element actually scrolls vertically */
 function isScrollable(el: HTMLElement) {
   return el.scrollHeight > el.clientHeight;
 }
 
-/** Check if target is sufficiently visible within container (or window). */
 function isInView(container: HTMLElement | Window, target: HTMLElement, margin = 24) {
   const tRect = target.getBoundingClientRect();
   const cTop = container instanceof Window ? 0 : (container as HTMLElement).getBoundingClientRect().top;
@@ -144,6 +142,14 @@ export default function UploadPage() {
   const captionRef = useRef<HTMLDivElement | null>(null);
 
   const [scrollKey, setScrollKey] = useState(0);
+
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  const openUploadError = (msg: string) => {
+    setUploadError(msg);
+    setUploadModalOpen(true);
+  };
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -311,6 +317,7 @@ export default function UploadPage() {
     setSavedMediaId(null);
     setHashtags([]);
     setHandles([]);
+    setGenError(null);
     setDropzoneKey((k) => k + 1);
   };
 
@@ -345,7 +352,7 @@ export default function UploadPage() {
             </h1>
 
             <div className="grid md:grid-cols-2 gap-0 md:gap-6 min-h-[80vh] items-stretch">
-              <section className="flex flex-col h-full min-h-[60vh] md:min-h-[70vh] bg-white/[0.04] border border-white/10">
+              <section className="flex flex-col h-full min-h-[60vh] md:minh-[70vh] bg-white/[0.04] border border-white/10">
                 <div className="flex-1 min-h-0 p-6 md:p-8">
                   <div className="h-full min-h-[420px] md:min-h-[560px] relative">
                     {file && (
@@ -369,6 +376,7 @@ export default function UploadPage() {
                       key={dropzoneKey}
                       className={`h-full ${file ? "pointer-events-none" : ""}`}
                       onUpload={(f /* file */) => {
+                        if (!f) return;
                         setFile(f);
                         setCaption(null);
                         setUsedTone(null);
@@ -378,6 +386,7 @@ export default function UploadPage() {
                         setSavedMediaId(null);
                         setGenError(null);
                       }}
+                      onError={(msg) => openUploadError(msg)}
                     />
                   </div>
                 </div>
@@ -485,6 +494,13 @@ export default function UploadPage() {
 
         <Footer />
       </div>
+
+      {/* Upload error modal */}
+      <UploadErrorModal
+        open={uploadModalOpen}
+        message={uploadError}
+        onClose={() => setUploadModalOpen(false)}
+      />
     </div>
   );
 }
