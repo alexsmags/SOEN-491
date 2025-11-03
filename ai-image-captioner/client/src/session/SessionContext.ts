@@ -7,11 +7,13 @@ export type SessionUser =
 export type SessionCtx = {
   user: SessionUser;
   loading: boolean;
-  refresh: () => Promise<void>;
+  hydrated: boolean;
+  refresh: (opts?: { blocking?: boolean }) => Promise<void>;
 };
 
 export const SessionContext = createContext<SessionCtx>({
   user: null,
   loading: true,
+  hydrated: false,
   refresh: async () => {},
 });

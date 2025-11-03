@@ -67,7 +67,6 @@ export default function WorkspaceGrid({
                 onEdit={() => onEdit?.(m)}
                 onMore={() => onDelete?.(m)}
                 disabled={selectionMode}
-                imageClickable={false}
               />
             </div>
 

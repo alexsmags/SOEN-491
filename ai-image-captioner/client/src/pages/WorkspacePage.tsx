@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Layout/Sidebar";
 import Topbar from "../components/Layout/Topbar";
 import Footer from "../components/Layout/Footer";
@@ -43,6 +43,7 @@ function getDevHeaders(): Record<string, string> {
 
 export default function WorkspacePage() {
   const view = useView();
+  const navigate = useNavigate();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const qpPicker = searchParams.get("picker") === "1";
@@ -219,9 +220,9 @@ export default function WorkspacePage() {
       const params = new URLSearchParams(u.search);
       params.set("id", id);
       u.search = params.toString();
-      window.location.href = u.pathname + u.search + u.hash;
+      navigate(`${u.pathname}${u.search}${u.hash}`);
     } catch {
-      window.location.href = `/editor?id=${encodeURIComponent(id)}`;
+      navigate(`/editor?id=${encodeURIComponent(id)}`);
     }
   };
 
@@ -310,9 +311,7 @@ export default function WorkspacePage() {
                 onEdit={
                   !pickerActive
                     ? (item) => {
-                        window.location.href = `/editor?id=${encodeURIComponent(
-                          item.id
-                        )}`;
+                        navigate(`/editor?id=${encodeURIComponent(item.id)}`);
                       }
                     : undefined
                 }

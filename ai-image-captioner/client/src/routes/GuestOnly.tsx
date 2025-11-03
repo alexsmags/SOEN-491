@@ -8,11 +8,11 @@ interface LocationState {
 }
 
 export default function GuestOnly({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSession();
+  const { user, loading, hydrated } = useSession();
   const location = useLocation();
-  const state = location.state as LocationState | null; 
+  const state = location.state as LocationState | null;
 
-  if (loading) return <FullscreenLoader />;
+  if (!hydrated || loading) return <FullscreenLoader />;
 
   if (user) {
     const from = state?.from?.pathname ?? "/workspace";
