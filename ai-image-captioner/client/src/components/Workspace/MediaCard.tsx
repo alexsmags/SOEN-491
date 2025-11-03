@@ -23,7 +23,6 @@ type CardItem = {
   posY: number;
 };
 
-// cache is optional; kept here in case you expand logic later
 const missingCache = new Map<string, boolean>();
 
 export default function MediaCard({
@@ -50,12 +49,9 @@ export default function MediaCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  // Prevent duplicate delete calls (HEAD + onError) for the same card
   const autoDeletedRef = useRef(false);
 
-  // Single existence check via HEAD. If missing → delete once.
   useEffect(() => {
-    // reset the guard when the item changes
     autoDeletedRef.current = false;
 
     const controller = new AbortController();
@@ -69,7 +65,6 @@ export default function MediaCard({
         }
       })
       .catch(() => {
-        // ignore network errors to avoid false deletes
       });
 
     return () => controller.abort();
@@ -111,6 +106,8 @@ export default function MediaCard({
     <div
       className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
       aria-disabled={disabled || undefined}
+      data-testid="workspace-card-inner"
+      data-media-id={item.id}
     >
       <button
         type="button"
@@ -118,6 +115,7 @@ export default function MediaCard({
         className="block w-full text-left relative"
         title={imgButtonClickable ? "Edit" : undefined}
         tabIndex={imgButtonClickable ? 0 : -1}
+        data-testid="workspace-card-image-button"
       >
         <div className="relative w-full aspect-[4/5] bg-black/40">
           <img
@@ -128,19 +126,28 @@ export default function MediaCard({
             decoding="async"
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             onError={() => {
-              // Guard against a second delete after the HEAD-based delete
               if (!autoDeletedRef.current) {
                 autoDeletedRef.current = true;
                 onMore?.();
               }
             }}
+            data-testid="workspace-card-image"
           />
         </div>
       </button>
 
       <div className="p-3 border-t border-white/10">
-        <p className="text-sm leading-snug text-white/90 line-clamp-2">{caption}</p>
-        {created && <p className="mt-1 text-[11px] text-white/50">{created}</p>}
+        <p className="text-sm leading-snug text-white/90 line-clamp-2" data-testid="workspace-caption-visible">
+          {caption}
+        </p>
+        <span className="sr-only" data-testid="workspace-caption">
+          {caption}
+        </span>
+        {created && (
+          <p className="mt-1 text-[11px] text-white/50" data-testid="workspace-created-at">
+            {created}
+          </p>
+        )}
       </div>
 
       {!disabled && (
@@ -150,6 +157,7 @@ export default function MediaCard({
               onClick={onEdit}
               title="Edit"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+              data-testid="workspace-card-edit"
             >
               <Pencil size={16} className="text-white" />
             </button>
@@ -160,6 +168,8 @@ export default function MediaCard({
               onClick={() => setMenuOpen((v) => !v)}
               title="More"
               className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+              data-testid="workspace-card-more"
+              aria-expanded={menuOpen}
             >
               <MoreVertical size={16} className="text-white" />
             </button>
@@ -168,11 +178,13 @@ export default function MediaCard({
               <div
                 className="absolute right-0 mt-2 w-44 rounded-lg border border-white/10 bg-[#0b0f16] text-white shadow-xl z-10"
                 role="menu"
+                data-testid="workspace-card-menu"
               >
                 <button
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
                   onClick={openShare}
                   role="menuitem"
+                  data-testid="workspace-card-share"
                 >
                   <Share2 size={14} className="text-blue-400" />
                   <span>Share</span>
@@ -181,6 +193,7 @@ export default function MediaCard({
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/10 transition-colors"
                   onClick={handleDeleteClick}
                   role="menuitem"
+                  data-testid="workspace-card-delete"
                 >
                   <Trash2 size={14} className="text-red-400" />
                   <span>Delete</span>
