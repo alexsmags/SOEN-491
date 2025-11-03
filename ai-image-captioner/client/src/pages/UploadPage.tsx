@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Layout/Sidebar";
 import Topbar from "../components/Layout/Topbar";
@@ -46,6 +46,34 @@ const SERVER_URL =
   import.meta.env.VITE_SERVER_URL ??
   import.meta.env.VITE_API_BASE ??
   "";
+
+/** Compute target's scrollTop within a container, walking offsetParents. */
+function offsetTopWithin(container: HTMLElement, target: HTMLElement): number {
+  let top = 0;
+  let node: HTMLElement | null = target;
+  while (node && node !== container) {
+    top += node.offsetTop;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return top;
+}
+
+/** Returns true if this element actually scrolls vertically */
+function isScrollable(el: HTMLElement) {
+  return el.scrollHeight > el.clientHeight;
+}
+
+/** Check if target is sufficiently visible within container (or window). */
+function isInView(container: HTMLElement | Window, target: HTMLElement, margin = 24) {
+  const tRect = target.getBoundingClientRect();
+  const cTop = container instanceof Window ? 0 : (container as HTMLElement).getBoundingClientRect().top;
+  const cBottom =
+    container instanceof Window
+      ? window.innerHeight
+      : (container as HTMLElement).getBoundingClientRect().bottom;
+
+  return tRect.top >= cTop + margin && tRect.bottom <= cBottom - margin;
+}
 
 export default function UploadPage() {
   const view = useView();
@@ -112,6 +140,11 @@ export default function UploadPage() {
   const [footerH, setFooterH] = useState(0);
   const [dropzoneKey, setDropzoneKey] = useState(0);
 
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const captionRef = useRef<HTMLDivElement | null>(null);
+
+  const [scrollKey, setScrollKey] = useState(0);
+
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     const footer = document.querySelector("footer");
@@ -129,6 +162,40 @@ export default function UploadPage() {
       if (ro && footer) ro.disconnect();
     };
   }, []);
+
+  const scrollToCaption = () => {
+    const containerEl = mainRef.current as HTMLElement | null;
+    const target = captionRef.current as HTMLElement | null;
+    if (!target) return;
+
+    const HEADER_OFFSET = 16 /* pt-16 */ + 12 /* comfy gap */;
+
+    if (containerEl && isScrollable(containerEl)) {
+      if (!isInView(containerEl, target, 12)) {
+        const topWithin = offsetTopWithin(containerEl, target);
+        containerEl.scrollTo({ top: Math.max(0, topWithin - HEADER_OFFSET), behavior: "smooth" });
+      }
+    } else {
+      if (!isInView(window, target, 12)) {
+        const rect = target.getBoundingClientRect();
+        const absoluteTop = rect.top + window.scrollY;
+        window.scrollTo({ top: Math.max(0, absoluteTop - HEADER_OFFSET), behavior: "smooth" });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!caption) return;
+    scrollToCaption();
+    const t1 = setTimeout(scrollToCaption, 50);
+    const t2 = setTimeout(scrollToCaption, 200);
+    const t3 = setTimeout(scrollToCaption, 400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [scrollKey, caption]);
 
   async function onGenerate() {
     if (!file) return;
@@ -159,6 +226,7 @@ export default function UploadPage() {
       setSaveDone(false);
       setSaveError(null);
       setGenError(null);
+      setScrollKey((k) => k + 1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Caption failed";
       setGenError(msg);
@@ -267,6 +335,7 @@ export default function UploadPage() {
         <Topbar isOverlay={isOverlay} mobileOpen={mobileOpen} onMobileToggle={() => setMobileOpen((o) => !o)} />
 
         <main
+          ref={mainRef}
           className="flex-grow pt-16 px-0 bg-black overflow-y-auto"
           style={{ paddingBottom: `calc(${footerH}px + env(safe-area-inset-bottom))` }}
         >
@@ -295,7 +364,7 @@ export default function UploadPage() {
                       </button>
                     )}
 
-                    {/* Dropzone (its internal <input type="file"> will be targeted by tests) */}
+                    {/* Dropzone */}
                     <UploadDropzone
                       key={dropzoneKey}
                       className={`h-full ${file ? "pointer-events-none" : ""}`}
@@ -392,7 +461,12 @@ export default function UploadPage() {
             </div>
 
             {caption && (
-              <div className="mt-6 px-4 md:px-6" data-testid="caption-output" aria-live="polite">
+              <div
+                ref={captionRef}
+                className="mt-6 px-4 md:px-6"
+                data-testid="caption-output"
+                aria-live="polite"
+              >
                 <CaptionResult
                   caption={caption}
                   tone={(usedTone ?? tone) as string}
