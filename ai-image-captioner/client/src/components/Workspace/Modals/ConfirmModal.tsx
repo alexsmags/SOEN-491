@@ -48,6 +48,7 @@ export function ConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-label={typeof title === "string" ? title : "Confirmation dialog"}
+      data-testid="confirm-modal"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -55,12 +56,16 @@ export function ConfirmModal({
       <div
         ref={dialogRef}
         className="w-full max-w-md rounded-2xl bg-[#0b0f16] text-white border border-white/10 shadow-2xl"
+        data-testid="confirm-modal-dialog"
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-semibold">{title}</h2>
+          <h2 className="text-sm font-semibold" data-testid="confirm-modal-title">
+            {title}
+          </h2>
         </div>
 
-        <div className="px-5 py-4 text-sm text-white/80">
+        <div className="px-5 py-4 text-sm text-white/80" data-testid="confirm-modal-message">
           {typeof message === "string" ? <p>{message}</p> : message}
         </div>
 
@@ -69,6 +74,7 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             className="px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+            data-testid="confirm-modal-cancel"
           >
             {cancelText}
           </button>
@@ -76,6 +82,7 @@ export function ConfirmModal({
             type="button"
             onClick={onConfirm}
             className={`px-3 py-1.5 text-xs rounded-lg ${confirmClasses}`}
+            data-testid="confirm-modal-confirm"
           >
             {confirmText}
           </button>
