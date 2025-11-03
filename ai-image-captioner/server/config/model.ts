@@ -17,9 +17,11 @@ if (hfToken) {
 // Models
 export const MODEL_ID = process.env.BLIP_MODEL_ID || "Xenova/vit-gpt2-image-captioning";
 export const GEN_MODEL_ID = process.env.GEN_MODEL_ID || "Xenova/LaMini-Flan-T5-248M";
+export const EMBED_MODEL_ID = process.env.EMBED_MODEL_ID || "Xenova/all-MiniLM-L6-v2";
 
 let captionerPromise: Promise<any> | null = null;
 let generatorPromise: Promise<any> | null = null;
+let embedderPromise: Promise<any> | null = null;
 
 export function getCaptioner(): Promise<any> {
   if (!captionerPromise) captionerPromise = pipeline("image-to-text", MODEL_ID);
@@ -29,4 +31,9 @@ export function getCaptioner(): Promise<any> {
 export function getGenerator(): Promise<any> {
   if (!generatorPromise) generatorPromise = pipeline("text2text-generation", GEN_MODEL_ID);
   return generatorPromise as Promise<any>;
+}
+
+export function getEmbedder(): Promise<any> {
+  if (!embedderPromise) embedderPromise = pipeline("feature-extraction", EMBED_MODEL_ID);
+  return embedderPromise as Promise<any>;
 }

@@ -6,13 +6,13 @@ import { v4 as uuid } from "uuid";
 
 import { memUpload } from "../middlware/uploads";
 import { requireUserId } from "../middlware/auth";
-import { MODEL_ID, GEN_MODEL_ID, getCaptioner, getGenerator } from "../config/model";
+import { MODEL_ID, GEN_MODEL_ID, getCaptioner, getGenerator, getEmbedder } from "../config/model";
 import {
   ruleBasedCaption,
   looksBad,
-  extractEmojisOnly,
   type Placement,
-} from "../utils/textUtils.js";
+} from "../utils/textUtils";
+import { suggestEmojisByEmbedding } from "../utils/emoji";
 
 const router = express.Router();
 
@@ -69,7 +69,7 @@ router.post("/caption", memUpload.single("file"), async (req, res, next) => {
     const includeEmojis = (String(req.body.includeEmojis ?? "false") === "true");
     const emojiCount = Math.min(8, Math.max(1, Number(req.body.emojiCount ?? 2)));
 
-    const normalizePlacement = (v: any, def: Placement): Placement => {
+    const normalizePlacement = (v: unknown, def: Placement): Placement => {
       const s = String(v || "").toLowerCase();
       return s === "beginning" || s === "middle" || s === "end" ? (s as Placement) : def;
     };
@@ -143,19 +143,10 @@ router.post("/caption", memUpload.single("file"), async (req, res, next) => {
     let emojis: string[] = [];
     if (includeEmojis) {
       try {
-        const emojiPrompt =
-          `Given this caption: "${enhancedCore}". Suggest ${emojiCount} relevant emojis only. ` +
-          `Return emojis separated by spaces, with no words or punctuation.`;
-        const emoOut: any = await gen(emojiPrompt, {
-          max_new_tokens: 16,
-          temperature: 0.7,
-          top_p: 0.95,
-        });
-        const e0 = Array.isArray(emoOut) ? emoOut[0] : emoOut;
-        const raw = String(e0?.generated_text ?? e0?.text ?? "").trim();
-        emojis = extractEmojisOnly(raw, emojiCount);
+        const embedder = await getEmbedder();
+        emojis = await suggestEmojisByEmbedding(embedder as any, enhancedCore, emojiCount);
       } catch (e) {
-        console.warn("[caption][emoji][error]", e);
+        console.warn("[caption][emoji][embedder-error]", e);
         emojis = [];
       }
     }
@@ -185,6 +176,7 @@ router.post("/caption", memUpload.single("file"), async (req, res, next) => {
       meta: {
         image_caption_model: imgModelId,
         text_gen_model: (await (getGenerator() as any))?.model?.modelId || GEN_MODEL_ID,
+        embed_model: (await (getEmbedder() as any))?.model?.modelId,
         prompt,
         source,
         used_keywords: keywords,
