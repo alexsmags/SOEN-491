@@ -1,8 +1,6 @@
-// routes/__tests__/caption.test.tsx
 import path from "path";
 import os from "os";
 
-// mock first
 jest.mock("uuid", () => ({ v4: jest.fn(() => "uuid-mock") }));
 
 jest.doMock("../../middlware/auth", () => ({
@@ -10,7 +8,6 @@ jest.doMock("../../middlware/auth", () => ({
   __esModule: true,
 }));
 
-// ✅ never load the real ESM emoji module
 jest.doMock("../../utils/emoji", () => ({
   __esModule: true,
   suggestEmojisByEmbedding: jest.fn(async (_embedder, _text, desiredCount = 2) => {
@@ -42,7 +39,6 @@ const genFn = jest.fn(async (prompt: string) => {
 
 const getGeneratorMock = jest.fn(async () => genFn);
 
-// ✅ provide a working embedder so caption.ts can call it and set meta.embed_model
 const embedderFn = jest.fn(async (_input: string) => ({ data: [[1, 0]] }));
 (embedderFn as any).model = { modelId: embModelId };
 
@@ -61,7 +57,6 @@ const ruleBasedCaptionMock = jest.fn<string, [string, any]>(
 );
 const extractEmojisOnlyMock = jest.fn<string[], [string, number]>().mockReturnValue(["🏖️", "🌅"]);
 
-// ❗ use extensionless path to avoid ESM resolver problems
 jest.doMock("../../utils/textUtils", () => ({
   looksBad: looksBadMock,
   ruleBasedCaption: ruleBasedCaptionMock,
@@ -77,7 +72,6 @@ const unlinkSpy = jest
   .spyOn(fs.promises, "unlink")
   .mockImplementation(async () => {});
 
-// important: import router AFTER all the doMock calls above
 import router from "../../routes/caption";
 import type { Request, Response, NextFunction } from "express";
 
@@ -188,7 +182,6 @@ describe("POST /caption handler", () => {
     expect(unlinkSpy).toHaveBeenCalledWith(tmpPath);
 
     expect(looksBadMock).toHaveBeenCalled();
-    // removed extractEmojisOnly expectation; it's not used on the happy path
     expect(ruleBasedCaptionMock).toHaveBeenCalled();
 
     expect(out.meta.image_caption_model).toBe(capModelId);

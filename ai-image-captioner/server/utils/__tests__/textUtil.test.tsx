@@ -5,6 +5,7 @@ import {
   ruleBasedCaption,
   looksBad,
   extractEmojisOnly,
+  extractTopKeywords,
   type Placement,
 } from "../../utils/textUtils";
 
@@ -14,13 +15,22 @@ describe("tagify()", () => {
     expect(tagify("  C++ / JS ")).toBe("#cjs");
     expect(tagify("###Hash_TAG 123")).toBe("#hashtag123");
   });
+
+  it("removes extra leading # and keeps a single #", () => {
+    expect(tagify("#AlreadyTagged")).toBe("#alreadytagged");
+    expect(tagify("####just###hashes###")).toBe("#justhashes");
+  });
+
+  it("handles strings that become empty after stripping to #", () => {
+    expect(tagify("!!!")).toBe("#");
+  });
 });
 
 describe("ensureVoice()", () => {
   it("neutral returns unchanged", () => {
     expect(ensureVoice("Great day at the beach", "neutral")).toBe("Great day at the beach");
   });
-  it("adds leading 'I ' when no first-person token present (and lowercases first char of text)", () => {
+  it("adds leading 'I ' when no first-person token present", () => {
     expect(ensureVoice("Great day at the beach", "i")).toBe("I great day at the beach");
   });
   it("adds leading 'We ' when no plural token present", () => {
@@ -29,6 +39,7 @@ describe("ensureVoice()", () => {
   it("respects existing pronouns", () => {
     expect(ensureVoice("I love pizza", "i")).toBe("I love pizza");
     expect(ensureVoice("We are thrilled", "we")).toBe("We are thrilled");
+    expect(ensureVoice("we’re happy", "we")).toBe("we’re happy");
   });
 });
 
@@ -116,6 +127,45 @@ describe("ruleBasedCaption()", () => {
     expect(first).not.toMatch(/^[@#]|[\u{1F300}-\u{1FAFF}]/u);
     expect(last).not.toMatch(/^[@#]|[\u{1F300}-\u{1FAFF}]/u);
   });
+
+  it("caps hashtags to 8 and sanitizes via tagify", () => {
+    const many = ["A!", "B-", "C__", "D d", "E", "F", "G", "H", "I", "J"];
+    const out = ruleBasedCaption("The core", {
+      ...opts,
+      hashtags: many,
+      includeHashtags: true,
+      includeMentions: false,
+      includeEmojis: false,
+      hashtagsPlacement: "end",
+      mentionsPlacement: "end",
+      emojiPlacement: "end",
+    });
+    const tags = out.split(/\s+/).filter((t) => t.startsWith("#"));
+    expect(tags.length).toBe(8);
+    expect(tags.slice(-3)).toEqual(["#f", "#g", "#h"]);
+  });
+
+  it("omits location/mentions segment when both are empty", () => {
+    const out = ruleBasedCaption("The scene", {
+      ...opts,
+      includeMentions: true,
+      location: "",
+      handles: [],
+    });
+    expect(out).not.toContain("📍");
+    expect(out).not.toMatch(/@\w/);
+  });
+
+  it("cleans stray spaces before punctuation", () => {
+    const messy = "A view , with sun ! and birds ?";
+    const out = ruleBasedCaption(messy, {
+      ...opts,
+      includeEmojis: false,
+      includeHashtags: false,
+      includeMentions: false,
+    });
+    expect(out).not.toMatch(/\s+[,.!?;:]/);
+  });
 });
 
 describe("looksBad()", () => {
@@ -130,6 +180,7 @@ describe("looksBad()", () => {
   });
   it("flags with heuristic hints", () => {
     expect(looksBad("Open the text editor, then...", "x")).toBe(true);
+    expect(looksBad("There is no other way to do this", "x")).toBe(true);
   });
   it("passes normal text", () => {
     expect(looksBad("Having a great day by the river", "x")).toBe(false);
@@ -148,5 +199,27 @@ describe("extractEmojisOnly()", () => {
   });
   it("returns [] for falsy", () => {
     expect(extractEmojisOnly("", 5)).toEqual([]);
+  });
+});
+
+describe("extractTopKeywords()", () => {
+  it("ignores stop words, hashtags, and mentions; counts frequency", () => {
+    const txt =
+      "We were at the river with our friends @alice #sunnyday river river walk WALK walk!";
+    const out = extractTopKeywords(txt, 3);
+    expect(out.length).toBe(3);
+    expect(out).toEqual(expect.arrayContaining(["river", "walk", "friends"]));
+  });
+
+  it("respects max cap", () => {
+    const txt = "apple banana cherry date egg fruit grape hazel ivy jack kiwi lemon mango";
+    const out = extractTopKeywords(txt, 5);
+    expect(out.length).toBe(5);
+  });
+
+  it("drops tokens shorter than 3 chars", () => {
+    const txt = "a an of is am me we go to it be AI ML";
+    const out = extractTopKeywords(txt, 10);
+    expect(out.length).toBe(0);
   });
 });
