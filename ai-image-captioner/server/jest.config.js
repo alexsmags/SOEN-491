@@ -36,5 +36,6 @@ export default {
   "!**/dist/**",
   "!**/build/**",
   "!jest.config.*",
+  "!utils/emoji.ts",
 ],
 };
