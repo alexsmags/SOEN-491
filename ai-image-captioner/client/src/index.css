@@ -1,4 +1,3 @@
-/* src/index.css */
 @import "tailwindcss";
 
 html, body, #root { 
@@ -6,6 +5,5 @@ html, body, #root {
 }
 
 body {
-  /* Set a pure black base and maintain text clarity */
   @apply bg-black text-white antialiased;
 }
