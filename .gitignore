@@ -13,8 +13,10 @@ server/.env
 
 # Node modules
 node_modules/
-server/node_modules/
-client/node_modules/
+ai-image-captioner/server/node_modules/
+ai-image-captioner/client/node_modules/
+ai-image-captioner/client/package-lock.json
+ai-image-captioner/server/package-lock.json
 
 # Build outputs
 dist/
@@ -28,9 +30,9 @@ server/dist/
 coverage/
 lcov-report/
 *.lcov
-server/coverage/
-server/lcov-report/
-server/*.lcov
+ai-image-captioner/server/coverage/
+ai-image-captioner/server/lcov-report/
+ai-image-captioner/server/*.lcov
 
 # Editor & System files
 .vscode/*
