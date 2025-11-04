@@ -13,7 +13,7 @@ server/.env
 
 # Node modules
 node_modules/
-package-lock.json/
+package-lock.json
 ai-image-captioner/server/node_modules/
 ai-image-captioner/client/node_modules/
 ai-image-captioner/client/package-lock.json
