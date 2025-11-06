@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
 import type { Request } from "express";
 import { prisma } from "../prisma.js";
 import { requireUserId } from "../middlware/auth.js";
@@ -172,6 +174,101 @@ router.delete("/media/:id", async (req, res, next) => {
     }
 
     res.json({ ok: true, id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const SHARE_TTL_MS = 15 * 60 * 1000;
+
+const shareMap = new Map<
+  string,
+  { userId: string; mediaId: string; filePath: string; expiresAt: number }
+>();
+
+function signToken() {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+function guessMimeFromPath(p: string) {
+  const ext = path.extname(p).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return "application/octet-stream";
+}
+
+router.get("/media/:id/file", async (req, res, next) => {
+  try {
+    const userId = await requireUserId(req);
+    const { id } = req.params;
+
+    const item = await prisma.media.findUnique({ where: { id } });
+    if (!item) return res.status(404).json({ error: "not_found" });
+    if (item.userId !== userId) {
+      return res.status(403).json({ error: "forbidden", reason: "not_owner" });
+    }
+
+    const filePath = uploadsUrlToPath(item.imageUrl);
+    if (!filePath) return res.status(404).json({ error: "file_missing" });
+
+    const buf = await fs.readFile(filePath);
+    res.setHeader("Content-Type", guessMimeFromPath(filePath));
+    res.send(buf);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/media/:id/share", async (req, res, next) => {
+  try {
+    const userId = await requireUserId(req);
+    const { id } = req.params;
+
+    const item = await prisma.media.findUnique({ where: { id } });
+    if (!item) return res.status(404).json({ error: "not_found" });
+    if (item.userId !== userId) {
+      return res.status(403).json({ error: "forbidden", reason: "not_owner" });
+    }
+
+    const filePath = uploadsUrlToPath(item.imageUrl);
+    if (!filePath) return res.status(404).json({ error: "file_missing" });
+
+    await fs.stat(filePath);
+
+    const token = signToken();
+    shareMap.set(token, {
+      userId,
+      mediaId: id,
+      filePath,
+      expiresAt: Date.now() + SHARE_TTL_MS,
+    });
+
+    const base =
+      process.env.BASE_URL ?? `${req.protocol}://${req.get("host")}`;
+    const url = `${base}/share/${token}`;
+    res.json({ url, expiresInMs: SHARE_TTL_MS });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/share/:token", async (req, res, next) => {
+  try {
+    const token = req.params.token;
+    const row = shareMap.get(token);
+    if (!row) return res.status(404).json({ error: "invalid_token" });
+
+    if (Date.now() > row.expiresAt) {
+      shareMap.delete(token);
+      return res.status(410).json({ error: "expired" });
+    }
+
+    const buf = await fs.readFile(row.filePath);
+    res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
+    res.setHeader("Content-Type", guessMimeFromPath(row.filePath));
+    res.send(buf);
   } catch (err) {
     next(err);
   }

@@ -1,112 +1,258 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/Layout/Sidebar";
 import Topbar from "../components/Layout/Topbar";
 import Footer from "../components/Layout/Footer";
-import { ImagePicker } from "../components/Share/ImagePicker";
-import { PreviewWithShare } from "../components/Share/PreviewWithShare";
+import PreviewWithShare from "../components/Share/PreviewWithShare"; // default export
 import { ShareModal } from "../components/Share/Modals/ShareModal";
-import { buildShareUrl } from "../lib/shareUrls";
-import { SHARE_TARGETS } from "../data/shareTargets";
-import type { ShareTarget, SharePayload } from "../data/shareTargets";
+import WorkspaceImagePicker from "../components/Share/WorkspaceImagePicker";
+import { useWorkspaceImages } from "../hooks/useWorkspaceImages";
+import { fetchMediaFileAsFile, fetchMediaMeta } from "../services/media";
+import { useView } from "../hooks/useView";
+import { composeCaptionedPNG } from "../lib/captionCompose";
 
-type View = "mobile" | "tablet" | "desktop";
-function useView(): View {
-  const getView = () => {
-    if (typeof window === "undefined") return "desktop" as View;
-    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
-    if (window.matchMedia("(min-width: 768px) and (max-width: 1023px)").matches)
-      return "tablet";
-    return "desktop";
-  };
-  const [view, setView] = useState<View>(getView);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mqs = [
-      window.matchMedia("(max-width: 767px)"),
-      window.matchMedia("(min-width: 768px) and (max-width: 1023px)"),
-      window.matchMedia("(min-width: 1024px)"),
-    ];
-    const onChange = () => setView(getView());
-    mqs.forEach((mq) => mq.addEventListener("change", onChange));
-    return () => mqs.forEach((mq) => mq.removeEventListener("change", onChange));
-  }, []);
-  return view;
-}
+type Selected =
+  | {
+      id: string;
+      imageUrl?: string | null;
+      mime?: string | null;
+
+      caption?: string | null;
+      hashtags?: string[] | null;
+
+      fontFamily?: string | null;
+      fontSize?: number | null;
+      textColor?: string | null;
+      align?: "left" | "center" | "right" | null;
+      showBg?: boolean | null;
+      bgColor?: string | null;
+      bgOpacity?: number | null;
+      posX?: number | null;
+      posY?: number | null;
+    }
+  | null;
+
+const PANEL_HEIGHT = 720;
 
 export default function SharePage() {
   const view = useView();
   const isOverlay = view === "mobile";
-
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    const saved =
-      typeof window !== "undefined"
-        ? localStorage.getItem("sidebar-collapsed")
-        : null;
-    return saved ? saved === "1" : false;
-  });
-  useEffect(() => {
-    localStorage.setItem("sidebar-collapsed", collapsed ? "1" : "0");
-  }, [collapsed]);
   const [mobileOpen, setMobileOpen] = useState(false);
-  useEffect(() => {
-    if (view === "mobile") {
-      setMobileOpen(false);
-    } else if (view === "tablet") {
-      const saved = localStorage.getItem("sidebar-collapsed");
-      if (saved == null) setCollapsed(true);
-    }
-  }, [view]);
-  const sidebarWidth = useMemo(() => {
-    if (view === "mobile") return mobileOpen ? "16rem" : "0rem";
-    return collapsed ? "4rem" : "16rem";
-  }, [view, collapsed, mobileOpen]);
+  const [collapsed, setCollapsed] = useState(false);
 
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const {
+    images,
+    loading,
+    error,
+    page,
+    hasNext,
+    prevPage,
+    nextPage,
+    reload,
+  } = useWorkspaceImages();
+
+  const [selected, setSelected] = useState<Selected>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [composedUrl, setComposedUrl] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
 
-  const payload: SharePayload = useMemo(
-    () => ({
-      url: window.location.origin,
-      text:
-        "Coffee and a good book: the perfect escape from the daily grind. ☕️📚",
-      hashtags: ["CafeVibes", "Bookworm"],
-      image: selectedImage || undefined,
-    }),
-    [selectedImage]
-  );
+  const lastUrlRef = useRef<string | null>(null);
 
-const onShareTo = (id: ShareTarget["id"]) => {
-  const target = SHARE_TARGETS.find((t) => t.id === id);
-  if (!target) return;
+  useEffect(() => {
+    return () => {
+      if (lastUrlRef.current) {
+        URL.revokeObjectURL(lastUrlRef.current);
+        lastUrlRef.current = null;
+      }
+    };
+  }, []);
 
-  if (id === "system" && navigator.share) {
-    navigator
-      .share({
-        title: "CaptoPic",
-        text: payload.text,
-        url: payload.url,
-      })
-      .catch(() => {});
-    return;
-  }
+  useEffect(() => {
+    if (selected && !images.some((i) => i.id === selected.id)) {
+      setSelected(null);
+      if (lastUrlRef.current) {
+        URL.revokeObjectURL(lastUrlRef.current);
+        lastUrlRef.current = null;
+      }
+      setComposedUrl(null);
+    }
+  }, [images, selected]);
 
-  const href = buildShareUrl(target.id, payload);
-  if (!href) return;
+  const sidebarWidth = collapsed ? "76px" : "296px";
 
-  const w = 680;
-  const h = 560;
-  const left = window.screenX + (window.outerWidth - w) / 2;
-  const top = window.screenY + (window.outerHeight - h) / 2;
-  window.open(
-    href,
-    "_blank",
-    `popup=yes,width=${w},height=${h},left=${left},top=${top}`
-  );
-};
+  const previewSrc = composedUrl;
+  const caption = selected?.caption ?? "";
+  const hashtags = (selected?.hashtags as string[] | undefined) ?? [];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      if (!selected) {
+        if (lastUrlRef.current) {
+          URL.revokeObjectURL(lastUrlRef.current);
+          lastUrlRef.current = null;
+        }
+        setComposedUrl(null);
+        setComposing(false);
+        return;
+      }
+
+      setComposing(true);
+      try {
+        let meta = selected;
+        try {
+          const serverMeta = await fetchMediaMeta(selected.id);
+          meta = {
+            ...selected,
+            caption: serverMeta?.caption ?? selected.caption ?? "",
+            hashtags:
+              (Array.isArray(serverMeta?.keywords)
+                ? serverMeta.keywords
+                : selected.hashtags) ?? [],
+            mime: serverMeta?.mime ?? selected.mime ?? null,
+            imageUrl: serverMeta?.imageUrl ?? selected.imageUrl ?? null,
+
+            fontFamily: serverMeta?.fontFamily ?? selected.fontFamily ?? null,
+            fontSize: serverMeta?.fontSize ?? selected.fontSize ?? null,
+            textColor: serverMeta?.textColor ?? selected.textColor ?? null,
+            align: serverMeta?.align ?? selected.align ?? null,
+            showBg: serverMeta?.showBg ?? selected.showBg ?? null,
+            bgColor: serverMeta?.bgColor ?? selected.bgColor ?? null,
+            bgOpacity: serverMeta?.bgOpacity ?? selected.bgOpacity ?? null,
+            posX: serverMeta?.posX ?? selected.posX ?? null,
+            posY: serverMeta?.posY ?? selected.posY ?? null,
+          };
+        } catch {
+          console.error("error")
+        }
+
+        const originalFile = await fetchMediaFileAsFile(
+          selected.id,
+          meta?.mime ?? selected.mime,
+          "workspace-image"
+        );
+        const blob = await composeCaptionedPNG(originalFile, {
+          caption: meta?.caption ?? "",
+          fontFamily: meta?.fontFamily ?? undefined,
+          fontSize: meta?.fontSize ?? undefined,
+          textColor: meta?.textColor ?? undefined,
+          align: (meta?.align as any) ?? undefined,
+          showBg: meta?.showBg ?? undefined,
+          bgColor: meta?.bgColor ?? undefined,
+          bgOpacity: meta?.bgOpacity ?? undefined,
+          posX: meta?.posX ?? undefined,
+          posY: meta?.posY ?? undefined,
+        });
+
+        if (cancelled) return;
+
+        const url = URL.createObjectURL(blob);
+        if (lastUrlRef.current) URL.revokeObjectURL(lastUrlRef.current);
+        lastUrlRef.current = url;
+        setComposedUrl(url);
+      } catch (e) {
+        console.error("[SharePage] compose preview failed:", e);
+        if (!cancelled) setComposedUrl(null);
+      } finally {
+        if (!cancelled) setComposing(false);
+      }
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selected?.id,
+    selected?.caption,
+    selected?.fontFamily,
+    selected?.fontSize,
+    selected?.textColor,
+    selected?.align,
+    selected?.showBg,
+    selected?.bgColor,
+    selected?.bgOpacity,
+    selected?.posX,
+    selected?.posY,
+  ]);
+
+  const onShareSystem = async () => {
+    if (!selected) return;
+
+    try {
+      let meta = selected;
+      try {
+        const serverMeta = await fetchMediaMeta(selected.id);
+        meta = {
+          ...selected,
+          caption: serverMeta?.caption ?? selected.caption ?? "",
+          hashtags:
+            (Array.isArray(serverMeta?.keywords) ? serverMeta.keywords : selected.hashtags) ?? [],
+          mime: serverMeta?.mime ?? selected.mime ?? null,
+          imageUrl: serverMeta?.imageUrl ?? selected.imageUrl ?? null,
+
+          fontFamily: serverMeta?.fontFamily ?? selected.fontFamily ?? null,
+          fontSize: serverMeta?.fontSize ?? selected.fontSize ?? null,
+          textColor: serverMeta?.textColor ?? selected.textColor ?? null,
+          align: serverMeta?.align ?? selected.align ?? null,
+          showBg: serverMeta?.showBg ?? selected.showBg ?? null,
+          bgColor: serverMeta?.bgColor ?? selected.bgColor ?? null,
+          bgOpacity: serverMeta?.bgOpacity ?? selected.bgOpacity ?? null,
+          posX: serverMeta?.posX ?? selected.posX ?? null,
+          posY: serverMeta?.posY ?? selected.posY ?? null,
+        };
+      } catch {}
+
+      const originalFile = await fetchMediaFileAsFile(
+        selected.id,
+        meta?.mime ?? selected.mime,
+        "workspace-image"
+      );
+      const captionBlob = await composeCaptionedPNG(originalFile, {
+        caption: meta?.caption ?? "",
+        fontFamily: meta?.fontFamily ?? undefined,
+        fontSize: meta?.fontSize ?? undefined,
+        textColor: meta?.textColor ?? undefined,
+        align: (meta?.align as any) ?? undefined,
+        showBg: meta?.showBg ?? undefined,
+        bgColor: meta?.bgColor ?? undefined,
+        bgOpacity: meta?.bgOpacity ?? undefined,
+        posX: meta?.posX ?? undefined,
+        posY: meta?.posY ?? undefined,
+      });
+      const outFile = new File([captionBlob], "workspace-image.png", {
+        type: "image/png",
+      });
+
+      if (navigator.share) {
+        const canShareFiles =
+          typeof (navigator as any).canShare === "function"
+            ? (navigator as any).canShare({ files: [outFile] })
+            : true;
+
+        if (canShareFiles) {
+          await navigator.share({
+            files: [outFile],
+            text: shareText(meta?.caption, meta?.hashtags),
+            title: "AI Image Captioner",
+          });
+        } else {
+          alert("This browser doesn't support sharing files via the system panel.");
+        }
+      } else {
+        alert("System share isn’t supported in this browser.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Unable to prepare the captioned image for sharing.");
+    } finally {
+      setShareOpen(false);
+    }
+  };
 
   return (
     <div
-      className="bg-[#0C0F14] text-white overflow-x-hidden"
+      className="bg-black text-white overflow-x-hidden"
       style={{ "--sidebar-w": sidebarWidth } as React.CSSProperties}
     >
       <Sidebar
@@ -120,8 +266,9 @@ const onShareTo = (id: ShareTarget["id"]) => {
       />
 
       <div
-        className="min-h-screen flex flex-col transition-[padding-left] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
-        style={{ paddingLeft: isOverlay ? 0 : "var(--sidebar-w)" }}
+        className={`min-h-screen transition-[margin] duration-200 ${
+          isOverlay ? "" : "md:ml-[var(--sidebar-w)]"
+        }`}
       >
         <Topbar
           isOverlay={isOverlay}
@@ -129,42 +276,67 @@ const onShareTo = (id: ShareTarget["id"]) => {
           onMobileToggle={() => setMobileOpen((o) => !o)}
         />
 
-        <main className="flex-grow pt-14 px-6 md:px-10 pb-32 bg-black">
-          <h1 className="mt-6 md:mt-10 text-3xl md:text-5xl font-extrabold leading-tight tracking-tight text-[#3b477e]">
-            Social Media Integration
-          </h1>
-          <p className="mt-3 text-white/70 max-w-prose">
-            Pick your image. The Share button appears inside the preview, then click it to share to your friends!
-          </p>
-
-          <div className="mt-8 grid lg:grid-cols-2 gap-8 items-start">
-            <section className="rounded-2xl bg-white/[0.04] border border-white/10 p-5 md:p-6">
-              <h2 className="text-lg md:text-xl font-semibold">Image Preview</h2>
-              <p className="text-xs md:text-sm text-white/60 mt-1">
-                This is how your captioned image will appear on social media.
-              </p>
-
+        <main className="mx-auto max-w-7xl px- sm:px-6 lg:px-8 py-12 md:py-18">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-12 items-start">
+            <div className="md:col-span-8">
               <PreviewWithShare
-                imageSrc={selectedImage}
-                caption="Coffee and a good book: the perfect escape from the daily grind."
-                hashtags={["#CafeVibes", "#Bookworm"]}
+                imageSrc={previewSrc}
+                caption={caption}
+                hashtags={hashtags}
                 onShare={() => setShareOpen(true)}
+                fixedHeight={PANEL_HEIGHT}
+                isLoading={!!selected && (composing || !composedUrl)}
               />
-            </section>
+            </div>
 
-            <section className="rounded-2xl bg-white/[0.04] border border-white/10 p-5 md:p-6">
-              <h2 className="text-lg md:text-xl font-semibold">Choose Captioned Image</h2>
-              <p className="text-xs md:text-sm text-white/60 mt-1">
-                Pick from your creations in your workspace.
-              </p>
-              <ImagePicker
-                value={selectedImage}
-                onChange={(src) => {
-                  setSelectedImage(src);
-                  setShareOpen(false);
+            <div className="md:col-span-4">
+              <WorkspaceImagePicker
+                value={selected?.id ?? null}
+                onChange={(id) => {
+                  if (lastUrlRef.current) {
+                    URL.revokeObjectURL(lastUrlRef.current);
+                    lastUrlRef.current = null;
+                  }
+                  setComposedUrl(null);
+                  setComposing(!!id);
+
+                  if (!id) {
+                    setSelected(null);
+                    return;
+                  }
+                  const img = images.find((m) => m.id === id);
+                  setSelected(
+                    img
+                      ? {
+                          id: img.id,
+                          imageUrl: img.imageUrl ?? null,
+                          mime: img.mime ?? null,
+                          caption: img.caption ?? "",
+                          hashtags: (img.keywords as string[] | undefined) ?? [],
+                          fontFamily: img.fontFamily ?? null,
+                          fontSize: img.fontSize ?? null,
+                          textColor: img.textColor ?? null,
+                          align: img.align ?? null,
+                          showBg: img.showBg ?? null,
+                          bgColor: img.bgColor ?? null,
+                          bgOpacity: img.bgOpacity ?? null,
+                          posX: img.posX ?? null,
+                          posY: img.posY ?? null,
+                        }
+                      : { id }
+                  );
                 }}
+                images={images}
+                loading={loading}
+                error={error}
+                onReload={reload}
+                page={page}
+                hasNext={hasNext}
+                onPrev={prevPage}
+                onNext={nextPage}
+                panelHeight={PANEL_HEIGHT}
               />
-            </section>
+            </div>
           </div>
         </main>
 
@@ -174,9 +346,17 @@ const onShareTo = (id: ShareTarget["id"]) => {
       <ShareModal
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        targets={SHARE_TARGETS}
-        onShare={onShareTo}
+        onShareSystem={onShareSystem}
       />
     </div>
   );
+}
+
+function shareText(caption?: string | null, hashtags?: string[] | null) {
+  const tags =
+    (hashtags ?? [])
+      .map((h) => `#${String(h).replace(/^#/, "")}`)
+      .join(" ")
+      .trim() || "";
+  return [caption ?? "", tags].filter(Boolean).join(" ").trim();
 }

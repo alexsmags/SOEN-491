@@ -4,6 +4,9 @@ import { ConfirmModal } from "./Modals/ConfirmModal";
 import { ShareModal } from "../Share/Modals/ShareModal";
 import type { ShareTarget } from "../../data/shareTargets";
 
+import { fetchMediaFileAsFile, fetchMediaMeta } from "../../services/media";
+import { composeCaptionedPNG } from "../../lib/captionCompose";
+
 type Align = "left" | "center" | "right";
 
 type CardItem = {
@@ -27,7 +30,6 @@ const missingCache = new Map<string, boolean>();
 
 export default function MediaCard({
   item,
-  shareTargets,
   onShareTarget,
   onEdit,
   onMore,
@@ -95,9 +97,68 @@ export default function MediaCard({
     setMenuOpen(false);
     setShareOpen(true);
   };
-  const handleShareChoice = (id: ShareTarget["id"]) => {
-    setShareOpen(false);
-    onShareTarget?.(id, item);
+
+  const onShareSystem = async () => {
+    if (disabled) return;
+
+    try {
+      const meta = await fetchMediaMeta(item.id).catch(() => null);
+
+      const captionText =
+        (meta?.caption as string | undefined) ??
+        item.caption ??
+        "";
+
+      const hashtags =
+        (Array.isArray(meta?.keywords) ? (meta.keywords as string[]) : []) as string[];
+
+      const style = {
+        caption: captionText,
+        fontFamily: (meta?.fontFamily as string | undefined) ?? item.fontFamily,
+        fontSize: (meta?.fontSize as number | undefined) ?? item.fontSize,
+        textColor: (meta?.textColor as string | undefined) ?? item.textColor,
+        align: (meta?.align as Align | undefined) ?? item.align,
+        showBg: (meta?.showBg as boolean | undefined) ?? item.showBg,
+        bgColor: (meta?.bgColor as string | undefined) ?? item.bgColor,
+        bgOpacity: (meta?.bgOpacity as number | undefined) ?? item.bgOpacity,
+        posX: (meta?.posX as number | undefined) ?? item.posX,
+        posY: (meta?.posY as number | undefined) ?? item.posY,
+      };
+
+      const mime = (meta?.mime as string | undefined) ?? undefined;
+      const originalFile = await fetchMediaFileAsFile(item.id, mime, "workspace-image");
+
+      const captionBlob = await composeCaptionedPNG(originalFile, style);
+
+      const outFile = new File([captionBlob], "workspace-image.png", { type: "image/png" });
+      const shareText = buildShareText(captionText, hashtags);
+
+      if (navigator.share) {
+        const canShareFiles =
+          typeof (navigator as any).canShare === "function"
+            ? (navigator as any).canShare({ files: [outFile] })
+            : true;
+
+        if (canShareFiles) {
+          await navigator.share({
+            files: [outFile],
+            text: shareText,
+            title: "AI Image Captioner",
+          });
+        } else {
+          alert("This browser doesn't support sharing files via the system panel.");
+        }
+      } else {
+        alert("System share isn’t supported in this browser.");
+      }
+
+      onShareTarget?.("system", item);
+    } catch (e) {
+      console.error(e);
+      alert("Unable to prepare the captioned image for sharing.");
+    } finally {
+      setShareOpen(false);
+    }
   };
 
   const imgButtonClickable = !disabled && imageClickable && !!onEdit;
@@ -223,9 +284,16 @@ export default function MediaCard({
       <ShareModal
         open={!disabled && shareOpen}
         onClose={() => setShareOpen(false)}
-        targets={shareTargets}
-        onShare={handleShareChoice}
+        onShareSystem={onShareSystem}
       />
     </div>
   );
+}
+
+function buildShareText(caption?: string, hashtags?: string[]) {
+  const tags = (hashtags ?? [])
+    .map((h) => `#${String(h).replace(/^#/, "")}`)
+    .join(" ")
+    .trim();
+  return [caption ?? "", tags].filter(Boolean).join(" ").trim();
 }

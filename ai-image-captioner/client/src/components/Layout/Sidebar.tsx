@@ -4,14 +4,13 @@ import {
   Edit3,
   Images,
   Share2,
-  Package,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import logo from "../../assets/CaptoPic_Logo.png";
-import { NavLink, type To } from "react-router-dom";
+import { NavLink, Link, type To } from "react-router-dom";
 import { useSession } from "../../session/useSession";
 
 type NavItemProps = {
@@ -22,7 +21,6 @@ type NavItemProps = {
 };
 
 const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
-
   const linkTo =
     to === "/workspace"
       ? { pathname: "/workspace", search: "?page=1" }
@@ -35,7 +33,9 @@ const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
       className={({ isActive }) =>
         [
           "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
-          isActive ? "bg-white/10 text-white shadow" : "text-white/70 hover:text-white hover:bg-white/5",
+          isActive
+            ? "bg-white/10 text-white shadow"
+            : "text-white/70 hover:text-white hover:bg-white/5",
           collapsed ? "justify-center" : "",
         ].join(" ")
       }
@@ -89,7 +89,9 @@ export default function Sidebar({
           className={[
             "fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]",
             "transition-opacity duration-300 ease-out",
-            open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+            open
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none",
           ].join(" ")}
           role="presentation"
           onClick={onClose}
@@ -105,7 +107,11 @@ export default function Sidebar({
           isOverlay
             ? "transition-transform duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
             : "transition-[width] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]",
-          isOverlay ? (open ? "translate-x-0" : "-translate-x-full") : "translate-x-0",
+          isOverlay
+            ? open
+              ? "translate-x-0"
+              : "-translate-x-full"
+            : "translate-x-0",
         ].join(" ")}
         style={{ width }}
         aria-label="Sidebar"
@@ -119,19 +125,26 @@ export default function Sidebar({
               : "flex items-center gap-2 px-3",
           ].join(" ")}
         >
-          <img
-            src={logo}
-            alt="CaptoPic"
-            className={collapsed ? "h-8 w-8 rounded-lg" : "h-9 w-9 rounded-lg"}
-          />
-          <span
-            className={[
-              "font-semibold tracking-tight text-white text-lg",
-              collapsed ? "hidden" : "inline",
-            ].join(" ")}
+          {/* Logo */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg"
+            title="Go to homepage"
           >
-            CaptoPic
-          </span>
+            <img
+              src={logo}
+              alt="CaptoPic"
+              className={collapsed ? "h-8 w-8 rounded-lg" : "h-9 w-9 rounded-lg"}
+            />
+            <span
+              className={[
+                "font-semibold tracking-tight text-white text-lg",
+                collapsed ? "hidden" : "inline",
+              ].join(" ")}
+            >
+              CaptoPic
+            </span>
+          </Link>
 
           {/* Overlay close button */}
           {isOverlay && (
