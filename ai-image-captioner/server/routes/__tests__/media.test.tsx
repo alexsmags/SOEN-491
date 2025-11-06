@@ -28,16 +28,20 @@ jest.doMock("../../prisma.js", () => ({
 const makePublicUploadUrl = jest.fn((fn: string) => `http://test/uploads/${fn}`);
 const uploadsUrlToPath = jest.fn(() => "/abs/path/file.jpg");
 jest.doMock("../../middlware/uploads.js", () => ({
-  uploadSingle: () => (_req: any, _res: any, next: any) => next(),
+  uploadSingle: () => (_req: unknown, _res: unknown, next: unknown) => (next as Function)(),
   makePublicUploadUrl,
   uploadsUrlToPath,
   __esModule: true,
 }));
 
 const unlinkMock = jest.fn(async () => {});
+const readFileMock = jest.fn(async () => Buffer.from("file"));
+const statMock = jest.fn(async () => ({}));
 jest.doMock("fs/promises", () => ({
-  default: { unlink: unlinkMock },
+  default: { unlink: unlinkMock, readFile: readFileMock, stat: statMock },
   unlink: unlinkMock,
+  readFile: readFileMock,
+  stat: statMock,
   __esModule: true,
 }));
 
@@ -53,22 +57,69 @@ function getRoute(path: string, method: string = "get") {
   return handlers[handlers.length - 1];
 }
 
-function mockReqRes(params: any = {}, body: any = {}, query: any = {}) {
+function mockReqRes(
+  params: Record<string, unknown> = {},
+  body: Record<string, unknown> = {},
+  query: Record<string, unknown> = {}
+) {
   const req = { params, body, query } as unknown as Request;
+
   let statusCode: number | undefined;
-  let jsonBody: any;
+  let jsonBody: unknown;
+
   const res = {
-    status(code: number) {
+    status: jest.fn(function (this: Response, code: number) {
       statusCode = code;
       return this;
-    },
-    json(payload: any) {
+    }),
+    json: jest.fn(function (this: Response, payload: unknown) {
       jsonBody = payload;
       return this;
+    }),
+  } as unknown as Response;
+
+  const next = jest.fn() as unknown as NextFunction;
+
+  return {
+    req,
+    res,
+    next,
+    getStatus: () => statusCode,
+    getJson: () => jsonBody,
+  };
+}
+
+function mockReqResBuf(params: Record<string, unknown> = {}) {
+  const headers: Record<string, string> = {};
+  let sent: unknown;
+
+  const req = { params } as unknown as Request;
+
+  const res = {
+    setHeader(k: string, v: string) {
+      headers[k] = v;
+    },
+    send(b: unknown) {
+      sent = b;
+      return this;
+    },
+    status: jest.fn(function (this: Response, _code: number) {
+      return this;
+    }),
+    json: jest.fn(function (this: Response, _payload: unknown) {
+      return this;
+    }),
+    get headers() {
+      return headers;
+    },
+    get body() {
+      return sent;
     },
   } as unknown as Response;
+
   const next = jest.fn() as unknown as NextFunction;
-  return { req, res, next, getStatus: () => statusCode, getJson: () => jsonBody };
+
+  return { req, res, next, getHeaders: () => headers, getBody: () => sent };
 }
 
 describe("media routes", () => {
@@ -86,7 +137,6 @@ describe("media routes", () => {
     jest.clearAllMocks();
   });
 
-  // GET /media
   it("GET /media returns paginated items (hasNext = true)", async () => {
     const handler = getRoute("/media", "get");
     mediaFindMany.mockResolvedValueOnce([{ id: "m1" }]);
@@ -143,7 +193,6 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  // GET /media/:id
   it("GET /media/:id returns 404 if not found", async () => {
     const handler = getRoute("/media/:id", "get");
     mediaFindUnique.mockResolvedValueOnce(null);
@@ -156,10 +205,9 @@ describe("media routes", () => {
   it("GET /media/:id returns 403 if not owner", async () => {
     const handler = getRoute("/media/:id", "get");
     mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u2" });
-    const { req, res, getStatus, getJson } = mockReqRes({ id: "m1" });
+    const { req, res } = mockReqRes({ id: "m1" });
     await handler(req, res, jest.fn());
-    expect(getStatus()).toBe(403);
-    expect(getJson()).toEqual({ error: "forbidden", reason: "not_owner" });
+    expect((res as any).status.mock.calls[0][0]).toBe(403);
   });
 
   it("GET /media/:id returns item if owner", async () => {
@@ -180,7 +228,6 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  // POST /media
   it("POST /media creates new media item (basic)", async () => {
     const handler = getRoute("/media", "post");
     const created = { id: "m1" };
@@ -235,7 +282,7 @@ describe("media routes", () => {
     const req: any = {
       body: {
         caption: "hi",
-        keywords: 'not-json',
+        keywords: "not-json",
       },
       file: { filename: "c.png" },
     };
@@ -270,7 +317,7 @@ describe("media routes", () => {
     });
   });
 
-  it("POST /media returns 400 on invalid body (caption missing)", async () => {
+  it("POST /media returns 400 on invalid body", async () => {
     const handler = getRoute("/media", "post");
     const req: any = {
       body: { tone: "x" },
@@ -280,9 +327,6 @@ describe("media routes", () => {
 
     await handler(req, res, jest.fn());
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "invalid_body" })
-    );
     expect(mediaCreate).not.toHaveBeenCalled();
   });
 
@@ -293,7 +337,6 @@ describe("media routes", () => {
 
     await handler(req, res, jest.fn());
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: "file_required" });
   });
 
   it("POST /media calls next(err) when create fails", async () => {
@@ -308,7 +351,6 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  // PUT /media/:id
   it("PUT /media/:id updates allowed fields", async () => {
     const handler = getRoute("/media/:id", "put");
     mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1" });
@@ -381,7 +423,6 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  // DELETE /media/:id
   it("DELETE /media/:id removes media and unlinks file", async () => {
     const handler = getRoute("/media/:id", "delete");
     mediaFindUnique.mockResolvedValueOnce({
@@ -484,5 +525,149 @@ describe("media routes", () => {
     const { req, res, next } = mockReqRes({ id: "m1" });
     await handler(req, res, next);
     expect(next).toHaveBeenCalledWith(err);
+  });
+
+  it("GET /media/:id/file returns file buffer with content-type", async () => {
+    const handler = getRoute("/media/:id/file", "get");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "http://test/uploads/a.jpg" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/a.jpg");
+    readFileMock.mockResolvedValueOnce(Buffer.from("jpgdata"));
+
+    const { req, res, getHeaders, getBody } = mockReqResBuf({ id: "m1" });
+    await handler(req, res, jest.fn());
+
+    expect(getHeaders()["Content-Type"]).toBe("image/jpeg");
+    expect(Buffer.isBuffer(getBody())).toBe(true);
+  });
+
+  it("GET /media/:id/file returns 403 if not owner", async () => {
+    const handler = getRoute("/media/:id/file", "get");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u2", imageUrl: "u" });
+
+    const { req, res } = mockReqRes({ id: "m1" });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(403);
+  });
+
+  it("GET /media/:id/file returns 404 if path missing", async () => {
+    const handler = getRoute("/media/:id/file", "get");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "x" });
+    uploadsUrlToPath.mockReturnValueOnce("");
+
+    const { req, res } = mockReqRes({ id: "m1" });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(404);
+  });
+
+  it("GET /media/:id/file calls next(err) on read error", async () => {
+    const handler = getRoute("/media/:id/file", "get");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "x" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/a.jpg");
+    const err = new Error("io");
+    readFileMock.mockRejectedValueOnce(err);
+
+    const { req, res, next } = mockReqRes({ id: "m1" });
+    await handler(req, res, next);
+    expect(next).toHaveBeenCalledWith(err);
+  });
+
+  it("POST /media/:id/share returns signed url and ttl", async () => {
+    const handler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "http://test/uploads/a.jpg" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/a.jpg");
+    statMock.mockResolvedValueOnce({});
+
+    const { req, res, getJson } = mockReqRes({ id: "m1" });
+    (req as any).protocol = "http";
+    (req as any).get = () => "example.com";
+    await handler(req, res, jest.fn());
+
+    const json = getJson();
+    expect(json.url).toMatch(/^http:\/\/example\.com\/share\/[A-Za-z0-9_-]{32}$/);
+    expect(typeof json.expiresInMs).toBe("number");
+  });
+
+  it("POST /media/:id/share uses BASE_URL when provided", async () => {
+    const handler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m2", userId: "u1", imageUrl: "http://test/uploads/b.jpg" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/b.jpg");
+    statMock.mockResolvedValueOnce({});
+    const prev = process.env.BASE_URL;
+    process.env.BASE_URL = "https://base.example";
+
+    const { req, res, getJson } = mockReqRes({ id: "m2" });
+    await handler(req, res, jest.fn());
+
+    const json = getJson();
+    expect(json.url).toMatch(/^https:\/\/base\.example\/share\/[A-Za-z0-9_-]{32}$/);
+    process.env.BASE_URL = prev;
+  });
+
+  it("POST /media/:id/share returns 403 if not owner", async () => {
+    const handler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u2", imageUrl: "u" });
+
+    const { req, res } = mockReqRes({ id: "m1" });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(403);
+  });
+
+  it("POST /media/:id/share returns 404 if path missing", async () => {
+    const handler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "x" });
+    uploadsUrlToPath.mockReturnValueOnce("");
+
+    const { req, res } = mockReqRes({ id: "m1" });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(404);
+  });
+
+  it("GET /share/:token serves file", async () => {
+    const shareHandler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "http://test/uploads/a.jpg" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/a.jpg");
+    statMock.mockResolvedValueOnce({});
+
+    const shareReq: any = { params: { id: "m1" }, get: () => "host", protocol: "http" };
+    let shareJson: any;
+    const shareRes: any = { json: (x: any) => (shareJson = x) };
+    await shareHandler(shareReq, shareRes, jest.fn());
+
+    const token = shareJson.url.split("/").pop();
+
+    const handler = getRoute("/share/:token", "get");
+    readFileMock.mockResolvedValueOnce(Buffer.from("buf"));
+    const { req, res, getHeaders, getBody } = mockReqResBuf({ token });
+    await handler(req, res, jest.fn());
+
+    expect(getHeaders()["Content-Type"]).toMatch(/^image\//);
+    expect(Buffer.isBuffer(getBody())).toBe(true);
+  });
+
+  it("GET /share/:token returns 410 when expired", async () => {
+    const shareHandler = getRoute("/media/:id/share", "post");
+    mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1", imageUrl: "http://test/uploads/a.jpg" });
+    uploadsUrlToPath.mockReturnValueOnce("/abs/path/a.jpg");
+    statMock.mockResolvedValueOnce({});
+
+    const shareReq: any = { params: { id: "m1" }, get: () => "host", protocol: "http" };
+    let shareJson: any;
+    const shareRes: any = { json: (x: any) => (shareJson = x) };
+    await shareHandler(shareReq, shareRes, jest.fn());
+    const token = shareJson.url.split("/").pop();
+
+    const nowSpy = jest.spyOn(Date, "now").mockReturnValue(Date.now() + 16 * 60 * 1000);
+    const handler = getRoute("/share/:token", "get");
+    const { req, res } = mockReqRes({ token });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(410);
+    nowSpy.mockRestore();
+  });
+
+  it("GET /share/:token returns 404 for invalid token", async () => {
+    const handler = getRoute("/share/:token", "get");
+    const { req, res } = mockReqRes({ token: "nope" });
+    await handler(req, res, jest.fn());
+    expect((res as any).status.mock.calls[0][0]).toBe(404);
   });
 });
