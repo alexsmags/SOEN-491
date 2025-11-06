@@ -2,27 +2,28 @@ import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/Layout/Sidebar";
 import Topbar from "../components/Layout/Topbar";
 import Footer from "../components/Layout/Footer";
-import PreviewWithShare from "../components/Share/PreviewWithShare"; // default export
+import PreviewWithShare from "../components/Share/PreviewWithShare";
 import { ShareModal } from "../components/Share/Modals/ShareModal";
 import WorkspaceImagePicker from "../components/Share/WorkspaceImagePicker";
 import { useWorkspaceImages } from "../hooks/useWorkspaceImages";
 import { fetchMediaFileAsFile, fetchMediaMeta } from "../services/media";
 import { useView } from "../hooks/useView";
 import { composeCaptionedPNG } from "../lib/captionCompose";
+import { type SelectedForPreview, useComposedPreview } from "../hooks/useComposedPreview";
+
+type Align = "left" | "center" | "right";
 
 type Selected =
   | {
       id: string;
       imageUrl?: string | null;
       mime?: string | null;
-
       caption?: string | null;
       hashtags?: string[] | null;
-
       fontFamily?: string | null;
       fontSize?: number | null;
       textColor?: string | null;
-      align?: "left" | "center" | "right" | null;
+      align?: Align | null;
       showBg?: boolean | null;
       bgColor?: string | null;
       bgOpacity?: number | null;
@@ -30,6 +31,11 @@ type Selected =
       posY?: number | null;
     }
   | null;
+
+type NavigatorWithShare = Navigator & {
+  canShare?: (data?: ShareData) => boolean;
+  share?: (data?: ShareData) => Promise<void>;
+};
 
 const PANEL_HEIGHT = 720;
 
@@ -52,10 +58,9 @@ export default function SharePage() {
 
   const [selected, setSelected] = useState<Selected>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [composedUrl, setComposedUrl] = useState<string | null>(null);
-  const [composing, setComposing] = useState(false);
-
   const lastUrlRef = useRef<string | null>(null);
+
+  const { url: composedUrl, composing } = useComposedPreview(selected as SelectedForPreview);
 
   useEffect(() => {
     return () => {
@@ -73,7 +78,6 @@ export default function SharePage() {
         URL.revokeObjectURL(lastUrlRef.current);
         lastUrlRef.current = null;
       }
-      setComposedUrl(null);
     }
   }, [images, selected]);
 
@@ -82,99 +86,6 @@ export default function SharePage() {
   const previewSrc = composedUrl;
   const caption = selected?.caption ?? "";
   const hashtags = (selected?.hashtags as string[] | undefined) ?? [];
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function run() {
-      if (!selected) {
-        if (lastUrlRef.current) {
-          URL.revokeObjectURL(lastUrlRef.current);
-          lastUrlRef.current = null;
-        }
-        setComposedUrl(null);
-        setComposing(false);
-        return;
-      }
-
-      setComposing(true);
-      try {
-        let meta = selected;
-        try {
-          const serverMeta = await fetchMediaMeta(selected.id);
-          meta = {
-            ...selected,
-            caption: serverMeta?.caption ?? selected.caption ?? "",
-            hashtags:
-              (Array.isArray(serverMeta?.keywords)
-                ? serverMeta.keywords
-                : selected.hashtags) ?? [],
-            mime: serverMeta?.mime ?? selected.mime ?? null,
-            imageUrl: serverMeta?.imageUrl ?? selected.imageUrl ?? null,
-
-            fontFamily: serverMeta?.fontFamily ?? selected.fontFamily ?? null,
-            fontSize: serverMeta?.fontSize ?? selected.fontSize ?? null,
-            textColor: serverMeta?.textColor ?? selected.textColor ?? null,
-            align: serverMeta?.align ?? selected.align ?? null,
-            showBg: serverMeta?.showBg ?? selected.showBg ?? null,
-            bgColor: serverMeta?.bgColor ?? selected.bgColor ?? null,
-            bgOpacity: serverMeta?.bgOpacity ?? selected.bgOpacity ?? null,
-            posX: serverMeta?.posX ?? selected.posX ?? null,
-            posY: serverMeta?.posY ?? selected.posY ?? null,
-          };
-        } catch {
-          console.error("error")
-        }
-
-        const originalFile = await fetchMediaFileAsFile(
-          selected.id,
-          meta?.mime ?? selected.mime,
-          "workspace-image"
-        );
-        const blob = await composeCaptionedPNG(originalFile, {
-          caption: meta?.caption ?? "",
-          fontFamily: meta?.fontFamily ?? undefined,
-          fontSize: meta?.fontSize ?? undefined,
-          textColor: meta?.textColor ?? undefined,
-          align: (meta?.align as any) ?? undefined,
-          showBg: meta?.showBg ?? undefined,
-          bgColor: meta?.bgColor ?? undefined,
-          bgOpacity: meta?.bgOpacity ?? undefined,
-          posX: meta?.posX ?? undefined,
-          posY: meta?.posY ?? undefined,
-        });
-
-        if (cancelled) return;
-
-        const url = URL.createObjectURL(blob);
-        if (lastUrlRef.current) URL.revokeObjectURL(lastUrlRef.current);
-        lastUrlRef.current = url;
-        setComposedUrl(url);
-      } catch (e) {
-        console.error("[SharePage] compose preview failed:", e);
-        if (!cancelled) setComposedUrl(null);
-      } finally {
-        if (!cancelled) setComposing(false);
-      }
-    }
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    selected?.id,
-    selected?.caption,
-    selected?.fontFamily,
-    selected?.fontSize,
-    selected?.textColor,
-    selected?.align,
-    selected?.showBg,
-    selected?.bgColor,
-    selected?.bgOpacity,
-    selected?.posX,
-    selected?.posY,
-  ]);
 
   const onShareSystem = async () => {
     if (!selected) return;
@@ -190,7 +101,6 @@ export default function SharePage() {
             (Array.isArray(serverMeta?.keywords) ? serverMeta.keywords : selected.hashtags) ?? [],
           mime: serverMeta?.mime ?? selected.mime ?? null,
           imageUrl: serverMeta?.imageUrl ?? selected.imageUrl ?? null,
-
           fontFamily: serverMeta?.fontFamily ?? selected.fontFamily ?? null,
           fontSize: serverMeta?.fontSize ?? selected.fontSize ?? null,
           textColor: serverMeta?.textColor ?? selected.textColor ?? null,
@@ -201,7 +111,9 @@ export default function SharePage() {
           posX: serverMeta?.posX ?? selected.posX ?? null,
           posY: serverMeta?.posY ?? selected.posY ?? null,
         };
-      } catch {}
+      } catch {
+        void 0;
+      }
 
       const originalFile = await fetchMediaFileAsFile(
         selected.id,
@@ -213,7 +125,9 @@ export default function SharePage() {
         fontFamily: meta?.fontFamily ?? undefined,
         fontSize: meta?.fontSize ?? undefined,
         textColor: meta?.textColor ?? undefined,
-        align: (meta?.align as any) ?? undefined,
+        align: (meta?.align === "left" || meta?.align === "center" || meta?.align === "right")
+          ? meta.align
+          : undefined,
         showBg: meta?.showBg ?? undefined,
         bgColor: meta?.bgColor ?? undefined,
         bgOpacity: meta?.bgOpacity ?? undefined,
@@ -224,23 +138,18 @@ export default function SharePage() {
         type: "image/png",
       });
 
-      if (navigator.share) {
-        const canShareFiles =
-          typeof (navigator as any).canShare === "function"
-            ? (navigator as any).canShare({ files: [outFile] })
-            : true;
+      const nav = navigator as NavigatorWithShare;
+      const canShareFiles =
+        typeof nav.canShare === "function" ? nav.canShare({ files: [outFile] }) : true;
 
-        if (canShareFiles) {
-          await navigator.share({
-            files: [outFile],
-            text: shareText(meta?.caption, meta?.hashtags),
-            title: "AI Image Captioner",
-          });
-        } else {
-          alert("This browser doesn't support sharing files via the system panel.");
-        }
+      if (canShareFiles && nav.share) {
+        await nav.share({
+          files: [outFile],
+          text: shareText(meta?.caption, meta?.hashtags),
+          title: "AI Image Captioner",
+        });
       } else {
-        alert("System share isn’t supported in this browser.");
+        alert("This browser doesn't support sharing files via the system panel.");
       }
     } catch (e) {
       console.error(e);
@@ -297,8 +206,6 @@ export default function SharePage() {
                     URL.revokeObjectURL(lastUrlRef.current);
                     lastUrlRef.current = null;
                   }
-                  setComposedUrl(null);
-                  setComposing(!!id);
 
                   if (!id) {
                     setSelected(null);

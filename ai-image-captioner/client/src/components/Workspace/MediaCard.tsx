@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { ConfirmModal } from "./Modals/ConfirmModal";
 import { ShareModal } from "../Share/Modals/ShareModal";
 import type { ShareTarget } from "../../data/shareTargets";
-
 import { fetchMediaFileAsFile, fetchMediaMeta } from "../../services/media";
 import { composeCaptionedPNG } from "../../lib/captionCompose";
 
@@ -14,7 +13,6 @@ type CardItem = {
   src: string;
   caption?: string | null;
   createdAt?: string | null;
-
   fontFamily: string;
   fontSize: number;
   textColor: string;
@@ -27,6 +25,11 @@ type CardItem = {
 };
 
 const missingCache = new Map<string, boolean>();
+
+type NavigatorWithShare = Navigator & {
+  canShare?: (data?: ShareData) => boolean;
+  share?: (data?: ShareData) => Promise<void>;
+};
 
 export default function MediaCard({
   item,
@@ -46,16 +49,13 @@ export default function MediaCard({
 }) {
   const caption = (item.caption ?? "Untitled").trim();
   const created = item.createdAt ? new Date(item.createdAt).toLocaleString() : undefined;
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-
   const autoDeletedRef = useRef(false);
 
   useEffect(() => {
     autoDeletedRef.current = false;
-
     const controller = new AbortController();
     fetch(item.src, { method: "HEAD", cache: "no-cache", signal: controller.signal })
       .then((res) => {
@@ -66,9 +66,7 @@ export default function MediaCard({
           onMore?.();
         }
       })
-      .catch(() => {
-      });
-
+      .catch(() => {});
     return () => controller.abort();
   }, [item.id, item.src, onMore]);
 
@@ -87,6 +85,7 @@ export default function MediaCard({
     setMenuOpen(false);
     setConfirmOpen(true);
   };
+
   const handleConfirmDelete = () => {
     setConfirmOpen(false);
     onMore?.();
@@ -100,18 +99,11 @@ export default function MediaCard({
 
   const onShareSystem = async () => {
     if (disabled) return;
-
     try {
       const meta = await fetchMediaMeta(item.id).catch(() => null);
-
-      const captionText =
-        (meta?.caption as string | undefined) ??
-        item.caption ??
-        "";
-
+      const captionText = (meta?.caption as string | undefined) ?? item.caption ?? "";
       const hashtags =
         (Array.isArray(meta?.keywords) ? (meta.keywords as string[]) : []) as string[];
-
       const style = {
         caption: captionText,
         fontFamily: (meta?.fontFamily as string | undefined) ?? item.fontFamily,
@@ -124,37 +116,24 @@ export default function MediaCard({
         posX: (meta?.posX as number | undefined) ?? item.posX,
         posY: (meta?.posY as number | undefined) ?? item.posY,
       };
-
       const mime = (meta?.mime as string | undefined) ?? undefined;
       const originalFile = await fetchMediaFileAsFile(item.id, mime, "workspace-image");
-
       const captionBlob = await composeCaptionedPNG(originalFile, style);
-
       const outFile = new File([captionBlob], "workspace-image.png", { type: "image/png" });
       const shareText = buildShareText(captionText, hashtags);
-
-      if (navigator.share) {
-        const canShareFiles =
-          typeof (navigator as any).canShare === "function"
-            ? (navigator as any).canShare({ files: [outFile] })
-            : true;
-
-        if (canShareFiles) {
-          await navigator.share({
-            files: [outFile],
-            text: shareText,
-            title: "AI Image Captioner",
-          });
-        } else {
-          alert("This browser doesn't support sharing files via the system panel.");
-        }
+      const nav = navigator as NavigatorWithShare;
+      const canShareFiles = typeof nav.canShare === "function" ? nav.canShare({ files: [outFile] }) : true;
+      if (canShareFiles && nav.share) {
+        await nav.share({
+          files: [outFile],
+          text: shareText,
+          title: "AI Image Captioner",
+        });
       } else {
-        alert("System share isn’t supported in this browser.");
+        alert("This browser doesn't support sharing files via the system panel.");
       }
-
       onShareTarget?.("system", item);
-    } catch (e) {
-      console.error(e);
+    } catch {
       alert("Unable to prepare the captioned image for sharing.");
     } finally {
       setShareOpen(false);
@@ -198,7 +177,10 @@ export default function MediaCard({
       </button>
 
       <div className="p-3 border-t border-white/10">
-        <p className="text-sm leading-snug text-white/90 line-clamp-2" data-testid="workspace-caption-visible">
+        <p
+          className="text-sm leading-snug text-white/90 line-clamp-2"
+          data-testid="workspace-caption-visible"
+        >
           {caption}
         </p>
         <span className="sr-only" data-testid="workspace-caption">
@@ -223,7 +205,6 @@ export default function MediaCard({
               <Pencil size={16} className="text-white" />
             </button>
           )}
-
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
@@ -234,7 +215,6 @@ export default function MediaCard({
             >
               <MoreVertical size={16} className="text-white" />
             </button>
-
             {menuOpen && (
               <div
                 className="absolute right-0 mt-2 w-44 rounded-lg border border-white/10 bg-[#0b0f16] text-white shadow-xl z-10"

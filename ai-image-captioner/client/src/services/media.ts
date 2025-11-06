@@ -1,4 +1,3 @@
-// client/src/services/media.ts
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "";
 
 function getDevHeaders(): Record<string, string> {
@@ -14,8 +13,8 @@ export async function fetchShareLink(mediaId: string): Promise<string> {
       "Content-Type": "application/json",
       ...getDevHeaders(),
     },
-    body: "{}",                // no body fields needed
-    credentials: "include",    // send cookies for auth
+    body: "{}", 
+    credentials: "include",
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -29,7 +28,7 @@ export async function fetchMediaFileAsFile(
   mediaId: string,
   mime: string | undefined | null,
   filename = "image"
-) {
+): Promise<File> {
   const url = `${SERVER_URL}/api/media/${mediaId}/file`;
   const res = await fetch(url, {
     method: "GET",
@@ -44,7 +43,24 @@ export async function fetchMediaFileAsFile(
   });
 }
 
-export async function fetchMediaMeta(mediaId: string): Promise<any> {
+export interface MediaMeta {
+  id: string;
+  caption?: string | null;
+  keywords?: string[] | null;
+  mime?: string | null;
+  imageUrl?: string | null;
+  fontFamily?: string | null;
+  fontSize?: number | null;
+  textColor?: string | null;
+  align?: "left" | "center" | "right" | null;
+  showBg?: boolean | null;
+  bgColor?: string | null;
+  bgOpacity?: number | null;
+  posX?: number | null;
+  posY?: number | null;
+}
+
+export async function fetchMediaMeta(mediaId: string): Promise<MediaMeta> {
   const res = await fetch(`${SERVER_URL}/api/media/${mediaId}`, {
     method: "GET",
     headers: { ...getDevHeaders() },
@@ -54,5 +70,5 @@ export async function fetchMediaMeta(mediaId: string): Promise<any> {
     const t = await res.text().catch(() => "");
     throw new Error(`Failed to load media meta (${res.status}): ${t}`);
   }
-  return res.json();
+  return res.json() as Promise<MediaMeta>;
 }

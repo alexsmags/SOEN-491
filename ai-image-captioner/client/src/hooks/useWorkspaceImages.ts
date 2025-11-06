@@ -21,7 +21,6 @@ export type WorkspaceImage = {
 };
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "";
-
 const PAGE_SIZE = 12;
 
 function getDevHeaders(): Record<string, string> {
@@ -30,21 +29,28 @@ function getDevHeaders(): Record<string, string> {
   return id ? { "x-user-id": id } : {};
 }
 
-type FetchResp = {
+type PagedResp = {
   items: WorkspaceImage[];
   total?: number;
   hasNext?: boolean;
   page?: number;
   pageSize?: number;
-} | {
-  length?: number;
-} | any;
+};
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function isPagedResp(v: unknown): v is PagedResp {
+  if (!isObject(v)) return false;
+  const items = (v as Record<string, unknown>).items;
+  return Array.isArray(items);
+}
 
 export function useWorkspaceImages() {
   const [images, setImages] = useState<WorkspaceImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [page, setPage] = useState<number>(1);
   const [hasNext, setHasNext] = useState<boolean>(false);
 
@@ -65,16 +71,16 @@ export function useWorkspaceImages() {
         throw new Error(`Failed to load media (${res.status}): ${txt}`);
       }
 
-      const data: FetchResp = await res.json();
+      const data: unknown = await res.json();
       let list: WorkspaceImage[] = [];
       let next = false;
 
-      if (Array.isArray((data as any)?.items)) {
-        list = (data as any).items;
-        if (typeof (data as any).hasNext === "boolean") {
-          next = (data as any).hasNext;
-        } else if (typeof (data as any).total === "number") {
-          const total = Math.max(0, Number((data as any).total));
+      if (isPagedResp(data)) {
+        list = data.items;
+        if (typeof data.hasNext === "boolean") {
+          next = data.hasNext;
+        } else if (typeof data.total === "number") {
+          const total = Math.max(0, Number(data.total));
           next = p * PAGE_SIZE < total;
         } else {
           next = list.length === PAGE_SIZE;
@@ -82,16 +88,20 @@ export function useWorkspaceImages() {
       } else if (Array.isArray(data)) {
         list = data as WorkspaceImage[];
         next = list.length === PAGE_SIZE;
-      } else {
-        list = Array.isArray((data as any)?.items) ? (data as any).items : [];
+      } else if (isObject(data) && Array.isArray(data.items)) {
+        list = data.items as WorkspaceImage[];
         next = list.length === PAGE_SIZE;
+      } else {
+        list = [];
+        next = false;
       }
 
       setImages(list);
       setHasNext(next);
       setPage(p);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load images");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load images";
+      setError(message);
       setImages([]);
       setHasNext(false);
     } finally {

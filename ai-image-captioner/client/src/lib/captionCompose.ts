@@ -1,15 +1,12 @@
 export type CaptionStyle = {
   caption?: string | null;
-
   fontFamily?: string | null;
   fontSize?: number | null;
   textColor?: string | null;
   align?: "left" | "center" | "right" | null;
-
   showBg?: boolean | null;
   bgColor?: string | null;
   bgOpacity?: number | null;
-
   posX?: number | null;
   posY?: number | null;
 };
@@ -18,15 +15,15 @@ export async function composeCaptionedPNG(
   srcBlob: Blob,
   style: CaptionStyle
 ): Promise<Blob> {
-  const bmp = await loadBitmap(srcBlob);
+  const bmp = (await loadBitmap(srcBlob)) as CanvasImageSource;
   const canvas = document.createElement("canvas");
-  canvas.width = bmp.width;
-  canvas.height = bmp.height;
+  canvas.width = (bmp as ImageBitmap | HTMLImageElement).width;
+  canvas.height = (bmp as ImageBitmap | HTMLImageElement).height;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = true;
-  (ctx as any).imageSmoothingQuality = "high";
+  (ctx as CanvasRenderingContext2D & { imageSmoothingQuality?: ImageSmoothingQuality }).imageSmoothingQuality = "high";
 
-  ctx.drawImage(bmp as any, 0, 0, bmp.width, bmp.height);
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
 
   const caption = (style.caption ?? "").trim();
   if (caption.length > 0) {
@@ -97,12 +94,12 @@ export async function composeCaptionedPNG(
   return png;
 }
 
-async function loadBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
+async function loadBitmap(blob: Blob): Promise<CanvasImageSource> {
   if ("createImageBitmap" in window) {
     try {
       return await createImageBitmap(blob);
     } catch {
-      console.error("error")
+      console.error("error");
     }
   }
   const url = URL.createObjectURL(blob);
@@ -112,7 +109,9 @@ async function loadBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
       el.onload = () => resolve(el);
       el.onerror = () => reject(new Error("decode error"));
       el.src = url;
-      (el as any).decoding = "async";
+      if ("decoding" in el) {
+        (el as HTMLImageElement & { decoding?: "async" | "sync" | "auto" }).decoding = "async";
+      }
     });
     return img;
   } finally {
