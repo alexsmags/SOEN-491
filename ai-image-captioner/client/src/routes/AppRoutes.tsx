@@ -15,7 +15,6 @@ export default function AppRoutes() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<HomePage />} />
-      <Route path="/product" />
 
       {/* Auth-only */}
       <Route

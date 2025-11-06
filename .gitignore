@@ -32,6 +32,9 @@ ai-image-captioner/server/coverage/
 ai-image-captioner/server/lcov-report/
 ai-image-captioner/server/*.lcov
 
+# Database
+ai-image-captioner/image_DB/
+
 # Editor & System files
 .vscode/*
 !.vscode/extensions.json
