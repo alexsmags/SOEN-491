@@ -17,15 +17,12 @@ export type Media = {
   updatedAt: string;
 };
 
-// Prefer the server URL; fall back to API base or localhost:5000
 const BASE =
   import.meta.env.VITE_SERVER_URL ??
   import.meta.env.VITE_API_BASE ??
   "http://localhost:5000";
 
-// Optional dev override: read from localStorage (not from VITE_* constants)
 function getDevHeaders(): HeadersInit {
-  // Only use for local dev; remove if you don’t want header overrides at all
   const id = typeof window !== "undefined" ? localStorage.getItem("dev-user-id") : null;
   return id ? { "x-user-id": id } : {};
 }
@@ -47,7 +44,7 @@ async function debugFetch(
   const reqInit: RequestInit = {
     ...init,
     signal: controller.signal,
-    credentials: init.credentials ?? "include", // important for session cookies
+    credentials: init.credentials ?? "include",
   };
 
   console.group(label);

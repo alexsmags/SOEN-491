@@ -1,7 +1,7 @@
 import path from "path";
 
 jest.mock("dotenv", () => {
-  const fn = jest.fn(); // no-op
+  const fn = jest.fn();
   return { __esModule: true, default: { config: fn }, config: fn };
 });
 
