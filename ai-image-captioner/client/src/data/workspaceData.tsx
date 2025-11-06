@@ -1,15 +1,14 @@
-import type { } from "react"; // keeps TS happy with verbatimModuleSyntax
+import type { } from "react";
 
-// Reusable item type for the workspace
 export type WorkspaceItem = {
   id: string;
-  title: string;     // the pill/tag
-  date: string;      // ISO or label
+  title: string;
+  date: string;
   imageUrl: string;
   caption: string;
 };
 
-// Demo data (replace with your real data)
+// Demo data
 export const ITEMS: WorkspaceItem[] = [
   {
     id: "1",

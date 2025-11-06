@@ -4,11 +4,11 @@ import { X } from "lucide-react";
 type Props = {
   value: string[];
   onChange: (items: string[]) => void;
-  label?: string;                    // Custom label (defaults to "Keywords")
+  label?: string;
   placeholder?: string;
   max?: number;
-  displayPrefix?: string;            // Show “#” or “@” before each chip (visual only)
-  normalizeOnAdd?: (raw: string) => string; // Transform input on add (strip “#”/“@”, etc.)
+  displayPrefix?: string;
+  normalizeOnAdd?: (raw: string) => string;
 };
 
 export default function KeywordsInput({

@@ -1,4 +1,3 @@
-// middlware/__tests__/logging.test.tsx
 import { EventEmitter } from "events";
 import type { Request, Response, NextFunction } from "express";
 

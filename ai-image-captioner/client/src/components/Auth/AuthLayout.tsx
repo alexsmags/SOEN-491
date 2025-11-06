@@ -114,9 +114,9 @@ export default function AuthLayout({ title, subtitle, children }: Props) {
                   )}
                 </div>
 
-                {/* Two-column wide card: form on the left, brand/cta panel on the right */}
+                {/* Two-column wide card */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-                  {/* Form (children) */}
+                  {/* Form */}
                   <div className="max-w-[720px]">{children}</div>
 
                   {/* Right panel */}

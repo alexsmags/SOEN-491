@@ -86,9 +86,7 @@ describe("media routes", () => {
     jest.clearAllMocks();
   });
 
-  //
   // GET /media
-  //
   it("GET /media returns paginated items (hasNext = true)", async () => {
     const handler = getRoute("/media", "get");
     mediaFindMany.mockResolvedValueOnce([{ id: "m1" }]);
@@ -145,9 +143,7 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  //
   // GET /media/:id
-  //
   it("GET /media/:id returns 404 if not found", async () => {
     const handler = getRoute("/media/:id", "get");
     mediaFindUnique.mockResolvedValueOnce(null);
@@ -184,9 +180,7 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  //
   // POST /media
-  //
   it("POST /media creates new media item (basic)", async () => {
     const handler = getRoute("/media", "post");
     const created = { id: "m1" };
@@ -314,9 +308,7 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  //
   // PUT /media/:id
-  //
   it("PUT /media/:id updates allowed fields", async () => {
     const handler = getRoute("/media/:id", "put");
     mediaFindUnique.mockResolvedValueOnce({ id: "m1", userId: "u1" });
@@ -389,9 +381,7 @@ describe("media routes", () => {
     expect(next).toHaveBeenCalledWith(err);
   });
 
-  //
   // DELETE /media/:id
-  //
   it("DELETE /media/:id removes media and unlinks file", async () => {
     const handler = getRoute("/media/:id", "delete");
     mediaFindUnique.mockResolvedValueOnce({
