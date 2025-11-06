@@ -9,7 +9,7 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  APP_DIR: ai-image-captioner 
+  APP_DIR: ai-image-captioner
 
 jobs:
   ci:
