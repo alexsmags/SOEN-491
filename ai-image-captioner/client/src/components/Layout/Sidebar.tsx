@@ -58,7 +58,6 @@ const links: Array<{
   { label: "Editor", Icon: Edit3, to: "/editor", requiresAuth: true },
   { label: "My Workspace", Icon: Images, to: "/workspace", requiresAuth: true },
   { label: "Share", Icon: Share2, to: "/share", requiresAuth: true },
-  { label: "Product Mode", Icon: Package, to: "/product" },
 ];
 
 type SidebarProps = {
