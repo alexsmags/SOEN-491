@@ -1,23 +1,18 @@
-import { vi } from "vitest";  // Ensure this is imported correctly
-import { fetchShareLink, fetchMediaFileAsFile, fetchMediaMeta } from "../media";  // Adjust the import path as needed
-
-// Mocking the fetch API globally
-global.fetch = vi.fn();
+import { vi, expect, test, beforeEach, describe } from 'vitest';
+import { fetchShareLink, fetchMediaFileAsFile, fetchMediaMeta } from '../media';
 
 describe("API functions tests", () => {
   beforeEach(() => {
-    // Clear mock data before each test
     vi.clearAllMocks();
   });
 
   test("fetchShareLink should return a valid link", async () => {
     const mockResponse = { url: "https://example.com/share-link" };
 
-    // Mock fetch to return a resolved promise with the mockResponse
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockResponse),
-    });
+    }));
 
     const mediaId = "123";
     const result = await fetchShareLink(mediaId);
@@ -28,7 +23,7 @@ describe("API functions tests", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.any(Object),
-        body: "{}", // Mocked empty body
+        body: "{}",
         credentials: "include",
       })
     );
@@ -37,11 +32,10 @@ describe("API functions tests", () => {
   test("fetchMediaFileAsFile should return a valid file", async () => {
     const mockBlob = new Blob(["file-content"], { type: "image/png" });
 
-    // Mock fetch to return a resolved promise with the file blob
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
       blob: () => Promise.resolve(mockBlob),
-    });
+    }));
 
     const mediaId = "123";
     const mimeType = "image/png";
@@ -59,11 +53,10 @@ describe("API functions tests", () => {
       keywords: ["test"],
     };
 
-    // Mock fetch to return a resolved promise with the mockMeta
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockMeta),
-    });
+    }));
 
     const mediaId = "123";
     const meta = await fetchMediaMeta(mediaId);

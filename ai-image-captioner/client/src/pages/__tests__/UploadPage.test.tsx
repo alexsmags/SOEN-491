@@ -69,13 +69,9 @@ vi.mock("../../components/Layout/Footer", () => ({
   default: () => <footer>f</footer>,
 }));
 
-let uploadCb: ((f: File) => void) | null = null;
-let uploadErrCb: ((m: string) => void) | null = null;
 vi.mock("../../components/Upload/UploadDropzone", () => ({
   __esModule: true,
   default: ({ onUpload, onError, className }: any) => {
-    uploadCb = onUpload;
-    uploadErrCb = onError;
     return (
       <div>
         <div data-testid="dropzone" className={className} />
@@ -93,11 +89,9 @@ vi.mock("../../components/Upload/HashtagsSelection", () => ({ __esModule: true, 
 vi.mock("../../components/Upload/MentionsLocationSection", () => ({ __esModule: true, default: () => <div data-testid="mentions" /> }));
 vi.mock("../../components/Upload/EmojisSection", () => ({ __esModule: true, default: () => <div data-testid="emojis" /> }));
 
-let lastCaptionResultProps: any = null;
 vi.mock("../../components/Upload/CaptionResult", () => ({
   __esModule: true,
   default: (props: any) => {
-    lastCaptionResultProps = props;
     return (
       <div>
         <div data-testid="caption-text">{props.caption}</div>
@@ -170,9 +164,6 @@ describe("UploadPage", () => {
     document.body.innerHTML = "";
     navigateMock.mockReset();
     gen.mockReset();
-    uploadCb = null;
-    uploadErrCb = null;
-    lastCaptionResultProps = null;
     lastModalOpen = false;
     lastModalMsg = null;
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ id: "123" }) })) as any;

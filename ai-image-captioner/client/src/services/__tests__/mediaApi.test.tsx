@@ -1,7 +1,5 @@
 import { vi } from 'vitest';
-import { fetchMedia, saveMedia, type MediaItem } from '../mediaApi';
-
-global.fetch = vi.fn();
+import { fetchMedia, saveMedia, type MediaItem } from '../mediaApi'; 
 
 describe("Media API functions", () => {
   beforeEach(() => {
@@ -24,10 +22,10 @@ describe("Media API functions", () => {
       posY: 20,
     };
 
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockMedia),
-    });
+    }));
 
     const mediaId = "123";
     const result = await fetchMedia(mediaId);
@@ -57,10 +55,10 @@ describe("Media API functions", () => {
       posY: 40,
     };
 
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockUpdatedMedia),
-    });
+    }));
 
     const mediaId = "123";
     const data: Partial<MediaItem> = { caption: "Updated Caption", fontSize: 16 };
@@ -82,11 +80,11 @@ describe("Media API functions", () => {
   });
 
   test("fetchMedia should throw an error when the response is not ok", async () => {
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 404,
       text: () => Promise.resolve("Not found"),
-    });
+    }));
 
     const mediaId = "123";
 
@@ -96,11 +94,11 @@ describe("Media API functions", () => {
   });
 
   test("saveMedia should throw an error when the response is not ok", async () => {
-    (fetch as vi.Mock).mockResolvedValueOnce({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 500,
       text: () => Promise.resolve("Server error"),
-    });
+    }));
 
     const mediaId = "123";
     const data: Partial<MediaItem> = { caption: "Updated Caption" };

@@ -125,11 +125,9 @@ vi.mock("../../components/Share/WorkspaceImagePicker", () => ({
   },
 }));
 
-let openShareFn: (() => void) | null = null;
 vi.mock("../../components/Share/PreviewWithShare", () => ({
   __esModule: true,
   default: (props: any) => {
-    openShareFn = props.onShare;
     return (
       <div data-testid="preview">
         <button data-testid="open-share" onClick={() => props.onShare?.()}>
@@ -177,7 +175,6 @@ beforeEach(() => {
     share: vi.fn(async () => {}),
   });
   externalOnSelect = null;
-  openShareFn = null;
   shareSystemHandler = null;
 });
 
