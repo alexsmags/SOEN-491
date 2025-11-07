@@ -25,7 +25,6 @@ export function DownloadModal({
   const [format, setFormat] = useState<OutputFormat>(defaultFormat);
   const [quality, setQuality] = useState(0.92);
   const [flattenBgColor, setFlattenBgColor] = useState("#ffffff");
-
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -90,7 +89,6 @@ export function DownloadModal({
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* File name */}
           <div>
             <label className="block text-xs text-white/70 mb-1">File name</label>
             <input
@@ -106,7 +104,6 @@ export function DownloadModal({
             <p className="text-[11px] text-white/40 mt-1">Extension will be appended automatically.</p>
           </div>
 
-          {/* Format + Quality */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-white/70 mb-1">Format</label>
@@ -136,7 +133,9 @@ export function DownloadModal({
                   className="w-full"
                   data-testid="download-quality-range"
                 />
-                <div className="text-[11px] text-white/50 mt-1" data-testid="download-quality-value">{Math.round(quality * 100)}%</div>
+                <div className="text-[11px] text-white/50 mt-1" data-testid="download-quality-value">
+                  {Math.round(quality * 100)}%
+                </div>
               </div>
             ) : (
               <div className="opacity-50">
@@ -146,7 +145,6 @@ export function DownloadModal({
             )}
           </div>
 
-          {/* Background color */}
           {isLossy && (
             <div>
               <label className="block text-xs text-white/70 mb-1">
@@ -175,7 +173,6 @@ export function DownloadModal({
           )}
         </div>
 
-        {/* Footer buttons */}
         <div className="px-5 py-4 border-t border-white/10 flex items-center justify-end gap-2">
           <button
             type="button"

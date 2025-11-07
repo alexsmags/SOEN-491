@@ -14,6 +14,7 @@ export default function EditorPreview({
   bubbleProps,
   showBg,
   aspectFromNat,
+  onDownloadMock,
 }: {
   image: string;
   caption: string;
@@ -23,32 +24,33 @@ export default function EditorPreview({
   bubbleProps?: React.HTMLAttributes<HTMLDivElement>;
   showBg: boolean;
   aspectFromNat?: string;
+  onDownloadMock?: (args: {
+    filename: string;
+    format: OutputFormat;
+    quality?: number;
+    flattenBgColor?: string;
+  }) => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-
-  const {
-    downloadWithCaption,
-    suggestFileName,
-  } = useDownloadWithCaption({
+  const { downloadWithCaption, suggestFileName } = useDownloadWithCaption({
     image,
     caption,
     frameRef,
     bubbleRef,
     showBg,
   });
-
+  const handleDownload = onDownloadMock ?? downloadWithCaption;
   const defaultBaseName = useMemo(() => {
     const raw = suggestFileName(image);
     return raw.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
   }, [image, suggestFileName]);
-
   const handleConfirmDownload = (opts: {
     fileName: string;
     format: OutputFormat;
-    quality?: number; 
+    quality?: number;
     flattenBgColor?: string;
   }) => {
-    downloadWithCaption({
+    handleDownload({
       filename: opts.fileName,
       format: opts.format,
       quality: opts.quality,
@@ -56,15 +58,12 @@ export default function EditorPreview({
     });
     setModalOpen(false);
   };
-
   return (
     <div className="p-4 md:p-6" data-testid="editor-preview">
       <div
         ref={frameRef}
         className="relative mx-auto w-full max-w-[820px] rounded-xl bg-black/60 border-8 border-[#2a2f3a] overflow-hidden "
-        style={{
-          aspectRatio: aspectFromNat ?? "4 / 3",
-        }}
+        style={{ aspectRatio: aspectFromNat ?? "4 / 3" }}
         data-testid="editor-frame"
       >
         <img
@@ -74,7 +73,6 @@ export default function EditorPreview({
           draggable={false}
           data-testid="editor-image"
         />
-
         <div
           ref={bubbleRef}
           className={clsx(
@@ -87,8 +85,6 @@ export default function EditorPreview({
         >
           {caption}
         </div>
-
-        {/* Download button */}
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -100,7 +96,6 @@ export default function EditorPreview({
           Download
         </button>
       </div>
-
       <DownloadModal
         open={modalOpen}
         defaultName={defaultBaseName + "_with_caption"}
