@@ -64,11 +64,16 @@ function isScrollable(el: HTMLElement) {
 
 function isInView(container: HTMLElement | Window, target: HTMLElement, margin = 24) {
   const tRect = target.getBoundingClientRect();
-  const cTop = container instanceof Window ? 0 : (container as HTMLElement).getBoundingClientRect().top;
-  const cBottom =
-    container instanceof Window
-      ? window.innerHeight
-      : (container as HTMLElement).getBoundingClientRect().bottom;
+
+  const isWin = (container as any) === (typeof window !== "undefined" ? window : undefined);
+
+  const getRect = (el: HTMLElement) =>
+    typeof (el as any)?.getBoundingClientRect === "function"
+      ? el.getBoundingClientRect()
+      : ({ top: 0, bottom: 0 } as any);
+
+  const cTop = isWin ? 0 : getRect(container as HTMLElement).top;
+  const cBottom = isWin ? (typeof window !== "undefined" ? window.innerHeight : 0) : getRect(container as HTMLElement).bottom;
 
   return tRect.top >= cTop + margin && tRect.bottom <= cBottom - margin;
 }
@@ -182,7 +187,7 @@ export default function UploadPage() {
         containerEl.scrollTo({ top: Math.max(0, topWithin - HEADER_OFFSET), behavior: "smooth" });
       }
     } else {
-      if (!isInView(window, target, 12)) {
+      if (typeof window !== "undefined" && !isInView(window, target, 12)) {
         const rect = target.getBoundingClientRect();
         const absoluteTop = rect.top + window.scrollY;
         window.scrollTo({ top: Math.max(0, absoluteTop - HEADER_OFFSET), behavior: "smooth" });

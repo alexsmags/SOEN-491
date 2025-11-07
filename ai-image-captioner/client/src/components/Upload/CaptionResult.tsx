@@ -29,14 +29,19 @@ export default function CaptionResult({
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-lg md:text-xl font-semibold">
           Generated Caption
-          <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-400/90 text-black align-middle">
+          <span
+            data-testid="tone-badge"
+            className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-400/90 text-black align-middle"
+          >
             {tone.charAt(0).toUpperCase() + tone.slice(1)}
           </span>
         </h4>
       </div>
 
       <div className="mt-4 rounded-lg bg-white/[0.03] border border-white/10 p-4">
-        <p className="text-base md:text-lg leading-relaxed text-white/90">{caption}</p>
+        <p data-testid="caption-text" className="text-base md:text-lg leading-relaxed text-white/90">
+          {caption}
+        </p>
       </div>
 
       <div className="mt-5 grid grid-cols-1 sm:grid-cols-4 gap-2">
