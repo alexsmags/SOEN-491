@@ -33,7 +33,7 @@ jobs:
         working-directory: ${{ env.APP_DIR }}/client
         run: npm ci || npm install
 
-     - name: Test (client) with coverage (if present)
+      - name: Test (client) with coverage (if present)
         working-directory: ${{ env.APP_DIR }}/client
         run: npm run vitest -- --coverage --run --watch=false || echo "no client tests"
 
