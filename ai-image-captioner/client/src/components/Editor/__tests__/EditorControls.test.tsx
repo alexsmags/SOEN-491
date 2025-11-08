@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { useState, type ComponentProps } from 'react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import EditorControls from '../EditorControls'
 
-function setup(overrides: Partial<React.ComponentProps<typeof EditorControls>> = {}) {
+function setup(overrides: Partial<ComponentProps<typeof EditorControls>> = {}) {
   const setCaptionSpy = vi.fn()
   const setFontFamily = vi.fn()
   const setFontSize = vi.fn()
@@ -20,6 +21,11 @@ function setup(overrides: Partial<React.ComponentProps<typeof EditorControls>> =
   function Harness() {
     const [caption, setCaptionState] = useState(overrides.caption ?? 'Hello')
     const [showBg, setShowBgState] = useState(overrides.showBg ?? false)
+    const [textColorState, setTextColorState] = useState(overrides.textColor ?? '#000000')
+    const [bgColorState, setBgColorState] = useState(overrides.bgColor ?? '#ffffff')
+    const [fontFamilyState, setFontFamilyState] = useState(overrides.fontFamily ?? 'Arial')
+    const [fontSizeState, setFontSizeState] = useState(overrides.fontSize ?? 16)
+
     return (
       <EditorControls
         caption={caption}
@@ -27,12 +33,21 @@ function setup(overrides: Partial<React.ComponentProps<typeof EditorControls>> =
           setCaptionSpy(v)
           setCaptionState(v)
         }}
-        fontFamily={overrides.fontFamily ?? 'Arial'}
-        setFontFamily={setFontFamily}
-        fontSize={overrides.fontSize ?? 16}
-        setFontSize={setFontSize}
-        textColor={overrides.textColor ?? '#000000'}
-        setTextColor={setTextColor}
+        fontFamily={fontFamilyState}
+        setFontFamily={(v) => {
+          setFontFamily(v)
+          setFontFamilyState(v)
+        }}
+        fontSize={fontSizeState}
+        setFontSize={(v) => {
+          setFontSize(v)
+          setFontSizeState(v)
+        }}
+        textColor={textColorState}
+        setTextColor={(v) => {
+          setTextColor(v)
+          setTextColorState(v)
+        }}
         align={overrides.align ?? 'left'}
         applyAlign={applyAlign}
         showBg={showBg}
@@ -40,11 +55,13 @@ function setup(overrides: Partial<React.ComponentProps<typeof EditorControls>> =
           setShowBgSpy(v)
           setShowBgState(v)
         }}
-        bgColor={overrides.bgColor ?? '#ffffff'}
-        setBgColor={setBgColor}
+        bgColor={bgColorState}
+        setBgColor={(v) => {
+          setBgColor(v)
+          setBgColorState(v)
+        }}
         bgOpacity={overrides.bgOpacity ?? 0.5}
         setBgOpacity={setBgOpacity}
-        COLORS={overrides.COLORS ?? ['#000000', '#ff0000', '#00ff00']}
         nudge={nudge}
         centerPosition={centerPosition}
         NUDGE={overrides.NUDGE ?? 2}
@@ -81,7 +98,8 @@ it('renders and updates caption text', async () => {
   const user = userEvent.setup()
   const { setCaptionSpy } = setup()
   const textarea = screen.getByTestId('editor-caption-input') as HTMLTextAreaElement
-  await user.type(textarea, '{Control>}[KeyA]{/Control}{Backspace}New caption')
+  await user.clear(textarea)
+  await user.type(textarea, 'New caption')
   expect(textarea.value).toBe('New caption')
   expect(setCaptionSpy).toHaveBeenLastCalledWith('New caption')
 })
@@ -96,13 +114,13 @@ it('changes font family and size', async () => {
   expect(setFontSize).toHaveBeenLastCalledWith(24)
 })
 
-it('selects a text color', async () => {
+it('selects a text color via input', async () => {
   const user = userEvent.setup()
   const { setTextColor } = setup()
-  const list = screen.getByTestId('editor-color-swatch-list')
-  const swatch = within(list).getAllByTestId('editor-color-swatch')[1]
-  await user.click(swatch)
-  expect(setTextColor).toHaveBeenCalledWith('#ff0000')
+  const input = screen.getByTestId('editor-color-input') as HTMLInputElement
+  await user.clear(input)
+  await user.type(input, '#ff0000')
+  expect(setTextColor).toHaveBeenLastCalledWith('#ff0000')
 })
 
 it('applies text alignment', async () => {
@@ -112,7 +130,7 @@ it('applies text alignment', async () => {
   expect(applyAlign).toHaveBeenCalledWith('center')
 })
 
-it('toggles caption background and adjusts opacity', async () => {
+it('toggles caption background, adjusts opacity, and changes bg color via input', async () => {
   const user = userEvent.setup()
   const { setShowBgSpy, setBgOpacity, setBgColor } = setup()
   await user.click(screen.getByTestId('editor-toggle-bg'))
@@ -120,10 +138,10 @@ it('toggles caption background and adjusts opacity', async () => {
   const opacity = await screen.findByTestId('editor-bg-opacity')
   fireEvent.input(opacity, { target: { value: '0.8' } })
   expect(setBgOpacity).toHaveBeenLastCalledWith(0.8)
-  const bgList = screen.getByTestId('editor-bg-swatch-list')
-  const bgSwatch = within(bgList).getAllByTestId('editor-bg-swatch')[2]
-  await user.click(bgSwatch)
-  expect(setBgColor).toHaveBeenCalledWith('#00ff00')
+  const bgInput = screen.getByTestId('editor-bg-input') as HTMLInputElement
+  await user.clear(bgInput)
+  await user.type(bgInput, '#00ff00')
+  expect(setBgColor).toHaveBeenLastCalledWith('#00ff00')
 })
 
 it('triggers save action', async () => {

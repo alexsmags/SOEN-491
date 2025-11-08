@@ -11,7 +11,6 @@ import EditorControls from "../components/Editor/EditorControls";
 import { useView } from "../hooks/useView";
 import { useCanvasFrame } from "../hooks/useCanvasFrame";
 import { computeBubbleStyle } from "../utils/computeBubbleStyle";
-import { PALETTE } from "../constants/color";
 import type { MediaItem } from "../types/media";
 
 const SERVER_URL =
@@ -82,6 +81,8 @@ type TempMediaState = {
   keywords?: string[];
 };
 
+const LAST_ID_KEY = "editor:last-id";
+
 export default function EditorPage() {
   const view = useView();
   const [search, setSearch] = useSearchParams();
@@ -147,6 +148,27 @@ export default function EditorPage() {
   const [bgColor, setBgColor] = useState("#3B3F4A");
   const [bgOpacity, setBgOpacity] = useState(0.8);
 
+  useEffect(() => {
+    if (mediaId) {
+      try {
+        sessionStorage.setItem(LAST_ID_KEY, mediaId);
+      } catch {}
+    }
+  }, [mediaId]);
+
+  useEffect(() => {
+    if (!mediaId) {
+      try {
+        const last = sessionStorage.getItem(LAST_ID_KEY);
+        if (last) {
+          const next = new URLSearchParams(location.search);
+          next.set("id", last);
+          setSearch(next, { replace: true });
+        }
+      } catch {}
+    }
+  }, [mediaId, location.search, setSearch]);
+
   const applyAlign = (a: "left" | "center" | "right") => {
     const frame = frameRef.current;
     const bubble = bubbleRef.current;
@@ -207,7 +229,6 @@ export default function EditorPage() {
           if (typeof m.showBg === "boolean") setShowBg(m.showBg);
           if (m.bgColor) setBgColor(m.bgColor);
           if (typeof m.bgOpacity === "number") setBgOpacity(m.bgOpacity);
-
           if (typeof m.posX === "number" || typeof m.posY === "number") {
             pendingNatPosRef.current = { x: m.posX ?? 0, y: m.posY ?? 0 };
           }
@@ -228,7 +249,6 @@ export default function EditorPage() {
         setBgOpacity(0.8);
       }
     })();
-
     return () => {
       cancelled = true;
     };
@@ -289,7 +309,6 @@ export default function EditorPage() {
     try {
       const natPosX = Math.round(posFrame.x / (scale || 1));
       const natPosY = Math.round(posFrame.y / (scale || 1));
-
       const updated = await apiSaveMedia(mediaId, {
         caption,
         fontFamily,
@@ -302,7 +321,6 @@ export default function EditorPage() {
         posX: natPosX,
         posY: natPosY,
       });
-
       setCaption(updated.caption ?? caption);
       setSavedMsg("Saved successfully!");
       setSaveSuccess(true);
@@ -333,11 +351,12 @@ export default function EditorPage() {
       if (search.get("justSaved") === "1") {
         const next = new URLSearchParams(search);
         next.delete("justSaved");
+        if (!next.get("id") && mediaId) next.set("id", mediaId);
         setSearch(next, { replace: true });
       }
     }, 2500);
     return () => clearTimeout(t);
-  }, [saveImageJustSucceeded, search, setSearch]);
+  }, [saveImageJustSucceeded, search, setSearch, mediaId]);
 
   const saveImageToWorkspace = async () => {
     if (!tempMedia?.file) return;
@@ -353,7 +372,6 @@ export default function EditorPage() {
       fd.append("showBg", String(showBg));
       fd.append("bgColor", bgColor);
       fd.append("bgOpacity", String(bgOpacity));
-
       const res = await fetch(`${SERVER_URL}/api/media`, {
         method: "POST",
         body: fd,
@@ -362,15 +380,12 @@ export default function EditorPage() {
           ...getDevHeaders(),
         },
       });
-
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || `Save failed (${res.status})`);
       }
-
       const data = await res.json();
       const newId: string | undefined = data?.id || data?.item?.id || data?._id;
-
       if (newId) {
         setHasSavedImage(true);
         if (tempObjectUrlRef.current) {
@@ -423,7 +438,6 @@ export default function EditorPage() {
 
         <main className="h-full min-h-0 bg-black overflow-visible lg:overflow-auto pt-[var(--topbar-h)]" data-testid="editor-main">
           <section className="min-h-full flex flex-col lg:flex-row" data-testid="editor-sections">
-            {/* Left (preview) */}
             <div className="flex-1 min-h-full flex items-center justify-center border-r border-white/10 bg-black pb-[var(--footer-h)]" data-testid="editor-preview-pane">
               <div className="w-full max-w-[820px] p-4 md:p-6">
                 {imageUrl && nat ? (
@@ -448,8 +462,6 @@ export default function EditorPage() {
                       <p className="text-sm text-white/60 mt-1">
                         Select or import an image to start editing.
                       </p>
-
-                      {/* Choose from Workspace */}
                       <button
                         type="button"
                         onClick={() => {
@@ -468,7 +480,6 @@ export default function EditorPage() {
               </div>
             </div>
 
-            {/* Right (controls) */}
             <div
               className="w-full lg:w-[400px] min-h-0 border-white/10 bg-black overflow-y-auto"
               style={{ height: "calc(100svh - var(--topbar-h) - var(--footer-h))" }}
@@ -491,7 +502,6 @@ export default function EditorPage() {
                 setBgColor={setBgColor}
                 bgOpacity={bgOpacity}
                 setBgOpacity={setBgOpacity}
-                COLORS={PALETTE}
                 nudge={(dx,dy)=>setPosFrame((p)=>clampPosition(p.x+dx,p.y+dy))}
                 centerPosition={centerPosition}
                 NUDGE={10}
