@@ -11,7 +11,8 @@ Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** ba
 **Release Date:** November 2025  
 
 **Key Features:**
-- AI-based automatic caption generation  
+- AI-based automatic caption generation
+- Authentication System
 - Caption style and tone customization  
 - Workspace for saving and editing captioned images  
 - Direct social media sharing via Windows sharing system.
