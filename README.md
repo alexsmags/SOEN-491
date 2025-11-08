@@ -6,7 +6,7 @@ Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** ba
 
 ---
 
-## Release Information (More info: [v1.0.0 Release](https://github.com/alexsmags/SOEN-491/releases/tag/1.0.0))
+## Release (More info: [v1.0.0 Release](https://github.com/alexsmags/SOEN-491/releases/tag/1.0.0))
 **Current Version:** v1.0.0  
 **Release Date:** November 2025  
 
