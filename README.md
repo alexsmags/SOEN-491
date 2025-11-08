@@ -81,10 +81,11 @@ npm run dev
 
 ## End-to-End Tests (Playwright)
 
-### 1) Install Playwright
+### 1) Install Playwright (in root)
 ```bash
 npm install -D @playwright/test
-npx playwright install
+npm run build
+npx playwright test
 ```
 
 ---
