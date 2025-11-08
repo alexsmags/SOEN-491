@@ -1,4 +1,4 @@
-# Peer Feedback Summary
+# User Feedback Summary
 
 Three users tested the application to evaluate usability (done locally on their computer), features, and performance.  
 The following feedback and improvement points were identified during the review.
