@@ -42,44 +42,54 @@ Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** ba
 ## How to Run the Project
 
 bash
-# 1. Clone the repository
+### 1. Clone the repository
 ```
 git clone <your-repo-url>
 cd <your-repo-folder>
 ```
 
-# 2. Install dependencies
+### 2. Install dependencies
 
-# For client
+#### For client
 ```
 cd client
 npm install
 ```
 
-# For server
+#### For server
 ```
 cd ../server
 npm install
 npx prisma generate
 ```
 
-# 3. Start the backend
+### 3. Start the backend
 ```
 cd server
 npm run dev
 ```
-### Backend runs at: http://localhost:5000
+#### Backend runs at: http://localhost:5000
 
-# 4. Start the frontend (open a new terminal)
+### 4. Start the frontend (open a new terminal)
 ```
 cd client
 npm run dev
 ```
-### Frontend runs at: http://localhost:5173
+#### Frontend runs at: http://localhost:5173
 
 ---
 
-## Documentation
+## End-to-End Tests (Playwright)
+
+### 1) Install Playwright
+```bash
+npm install -D @playwright/test
+npx playwright install
+```
+
+---
+
+### Documentation
 - [User Guide](./docs/user_guide.md): How to use the application
 - [User_Feedback](./docs/feedback.md): User feedback 
 - [Security & Risk Report](./docs/security_risk.md): Risk analysis and mitigations
