@@ -18,18 +18,28 @@ type NavItemProps = {
   Icon: LucideIcon;
   to: To;
   collapsed?: boolean;
+  state?: unknown;
+  onPreNavigate?: (toPathname: string) => boolean;
+  onCloseOverlay?: () => void;
 };
 
-const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
-  const linkTo =
-    to === "/workspace"
-      ? { pathname: "/workspace", search: "?page=1" }
-      : to;
+const NavItem = ({ label, Icon, to, collapsed, state, onPreNavigate, onCloseOverlay }: NavItemProps) => {
+  const linkTo = typeof to === "string" ? (to === "/workspace" ? { pathname: "/workspace", search: "?page=1" } : to) : to;
+  const targetPathname = typeof to === "string" ? to : (to as any).pathname || "/";
 
   return (
     <NavLink
       to={linkTo}
+      state={state}
       end
+      onClick={(e) => {
+        const allow = onPreNavigate ? onPreNavigate(targetPathname) : true;
+        if (!allow) {
+          e.preventDefault();
+          return;
+        }
+        if (onCloseOverlay) onCloseOverlay();
+      }}
       className={({ isActive }) =>
         [
           "group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition",
@@ -50,12 +60,13 @@ const NavItem = ({ label, Icon, to, collapsed }: NavItemProps) => {
 const links: Array<{
   label: string;
   Icon: LucideIcon;
-  to: string;
+  to: To;
   requiresAuth?: boolean;
+  state?: unknown;
 }> = [
   { label: "Homepage", Icon: Home, to: "/" },
   { label: "Upload & Generate", Icon: Upload, to: "/upload", requiresAuth: true },
-  { label: "Editor", Icon: Edit3, to: "/editor", requiresAuth: true },
+  { label: "Editor", Icon: Edit3, to: "/editor", state: { from: "sidebar" }, requiresAuth: true },
   { label: "My Workspace", Icon: Images, to: "/workspace", requiresAuth: true },
   { label: "Share", Icon: Share2, to: "/share", requiresAuth: true },
 ];
@@ -66,6 +77,7 @@ type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
   onClose: () => void;
+  confirmNavigate?: (toPathname: string) => boolean;
 };
 
 export default function Sidebar({
@@ -74,16 +86,15 @@ export default function Sidebar({
   collapsed,
   onToggle,
   onClose,
+  confirmNavigate,
 }: SidebarProps) {
   const isOverlay = mode === "overlay";
   const width = isOverlay ? "16rem" : "var(--sidebar-w)";
   const { user } = useSession();
-
   const visibleLinks = links.filter((l) => !l.requiresAuth || Boolean(user));
 
   return (
     <>
-      {/* Backdrop for overlay */}
       {isOverlay && (
         <div
           className={[
@@ -98,8 +109,6 @@ export default function Sidebar({
           aria-hidden={!open}
         />
       )}
-
-      {/* Sidebar container */}
       <aside
         className={[
           "fixed left-0 top-0 h-screen z-50 bg-black border-r border-white/10 p-3",
@@ -116,7 +125,6 @@ export default function Sidebar({
         style={{ width }}
         aria-label="Sidebar"
       >
-        {/* Header */}
         <div
           className={[
             "mb-6",
@@ -125,11 +133,18 @@ export default function Sidebar({
               : "flex items-center gap-2 px-3",
           ].join(" ")}
         >
-          {/* Logo */}
           <Link
             to="/"
             className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg"
             title="Go to homepage"
+            onClick={(e) => {
+              const allow = confirmNavigate ? confirmNavigate("/") : true;
+              if (!allow) {
+                e.preventDefault();
+                return;
+              }
+              if (isOverlay) onClose();
+            }}
           >
             <img
               src={logo}
@@ -145,8 +160,6 @@ export default function Sidebar({
               CaptoPic
             </span>
           </Link>
-
-          {/* Overlay close button */}
           {isOverlay && (
             <button
               onClick={onClose}
@@ -158,22 +171,21 @@ export default function Sidebar({
             </button>
           )}
         </div>
-
-        {/* Navigation */}
         <nav className="space-y-1 mt-1">
-          {visibleLinks.map(({ label, Icon, to }) => (
+          {visibleLinks.map(({ label, Icon, to, state }) => (
             <NavItem
               key={label}
               label={label}
               Icon={Icon}
               to={to}
+              state={state}
               collapsed={isOverlay ? false : collapsed}
+              onPreNavigate={confirmNavigate}
+              onCloseOverlay={isOverlay ? onClose : undefined}
             />
           ))}
         </nav>
       </aside>
-
-      {/* Docked toggle button */}
       {!isOverlay && (
         <button
           onClick={onToggle}

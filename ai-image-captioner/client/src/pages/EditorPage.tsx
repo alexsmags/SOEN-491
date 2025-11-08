@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
-
 import Sidebar from "../components/Layout/Sidebar";
 import Topbar from "../components/Layout/Topbar";
 import Footer from "../components/Layout/Footer";
 import EditorPreview from "../components/Editor/EditorPreview";
 import EditorControls from "../components/Editor/EditorControls";
-
 import { useView } from "../hooks/useView";
 import { useCanvasFrame } from "../hooks/useCanvasFrame";
 import { computeBubbleStyle } from "../utils/computeBubbleStyle";
@@ -88,11 +86,10 @@ export default function EditorPage() {
   const [search, setSearch] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-
   const mediaId = search.get("id");
-
-  const tempMedia =
-    (location.state as { tempMedia?: TempMediaState } | null | undefined)?.tempMedia;
+  const state = location.state as { tempMedia?: TempMediaState; from?: string } | null | undefined;
+  const tempMedia = state?.tempMedia;
+  const from = state?.from;
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     const saved =
@@ -138,12 +135,10 @@ export default function EditorPage() {
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState<string>("");
-
   const [fontFamily, setFontFamily] = useState("Arial");
   const [fontSize, setFontSize] = useState(24);
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [align, setAlign] = useState<"left" | "center" | "right">("center");
-
   const [showBg, setShowBg] = useState(true);
   const [bgColor, setBgColor] = useState("#3B3F4A");
   const [bgOpacity, setBgOpacity] = useState(0.8);
@@ -157,7 +152,7 @@ export default function EditorPage() {
   }, [mediaId]);
 
   useEffect(() => {
-    if (!mediaId) {
+    if (!mediaId && from !== "sidebar") {
       try {
         const last = sessionStorage.getItem(LAST_ID_KEY);
         if (last) {
@@ -167,7 +162,23 @@ export default function EditorPage() {
         }
       } catch {}
     }
-  }, [mediaId, location.search, setSearch]);
+  }, [mediaId, location.search, setSearch, from]);
+
+  useEffect(() => {
+    if (!mediaId) {
+      setImageUrl(null);
+      setCaption("");
+      setFontFamily("Arial");
+      setFontSize(24);
+      setTextColor("#FFFFFF");
+      setAlign("center");
+      setShowBg(true);
+      setBgColor("#3B3F4A");
+      setBgOpacity(0.8);
+      setPosFrame({ x: 0, y: 0 });
+      setNat(undefined as any);
+    }
+  }, [mediaId, setPosFrame, setNat]);
 
   const applyAlign = (a: "left" | "center" | "right") => {
     const frame = frameRef.current;
@@ -231,6 +242,8 @@ export default function EditorPage() {
           if (typeof m.bgOpacity === "number") setBgOpacity(m.bgOpacity);
           if (typeof m.posX === "number" || typeof m.posY === "number") {
             pendingNatPosRef.current = { x: m.posX ?? 0, y: m.posY ?? 0 };
+          } else {
+            pendingNatPosRef.current = { x: 0, y: 0 };
           }
         } catch (err) {
           console.error(err);
@@ -247,6 +260,7 @@ export default function EditorPage() {
         setShowBg(true);
         setBgColor("#3B3F4A");
         setBgOpacity(0.8);
+        pendingNatPosRef.current = { x: 0, y: 0 };
       }
     })();
     return () => {
@@ -301,6 +315,72 @@ export default function EditorPage() {
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const [dirty, setDirty] = useState(false);
+  const baselineRef = useRef<string>("");
+
+  const snapshot = () =>
+    JSON.stringify({
+      caption,
+      fontFamily,
+      fontSize,
+      textColor,
+      align,
+      showBg,
+      bgColor,
+      bgOpacity,
+      x: posFrame.x,
+      y: posFrame.y,
+      mediaId: mediaId || "",
+      imageUrl: imageUrl || "",
+    });
+
+  const markClean = () => {
+    requestAnimationFrame(() => {
+      baselineRef.current = snapshot();
+      setDirty(false);
+    });
+  };
+
+  useEffect(() => {
+    const s = snapshot();
+    if (!baselineRef.current) {
+      baselineRef.current = s;
+      setDirty(false);
+    } else {
+      setDirty(s !== baselineRef.current);
+    }
+  }, [
+    caption,
+    fontFamily,
+    fontSize,
+    textColor,
+    align,
+    showBg,
+    bgColor,
+    bgOpacity,
+    posFrame.x,
+    posFrame.y,
+    mediaId,
+    imageUrl,
+  ]);
+
+  useEffect(() => {
+    if (!pendingNatPosRef.current) {
+      markClean();
+    }
+  }, [imageUrl, nat?.w, nat?.h]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   const saveChanges = async () => {
     if (!mediaId || !imageUrl) return;
     setSaving(true);
@@ -324,12 +404,12 @@ export default function EditorPage() {
       setCaption(updated.caption ?? caption);
       setSavedMsg("Saved successfully!");
       setSaveSuccess(true);
+      markClean();
       setTimeout(() => {
         setSavedMsg(null);
         setSaveSuccess(false);
       }, 2500);
-    } catch (e) {
-      console.error(e);
+    } catch {
       setSavedMsg("Save failed");
       setSaveSuccess(false);
     } finally {
@@ -339,7 +419,6 @@ export default function EditorPage() {
 
   const [savingImage, setSavingImage] = useState(false);
   const [hasSavedImage, setHasSavedImage] = useState<boolean>(!!mediaId);
-
   const [saveImageJustSucceeded, setSaveImageJustSucceeded] = useState<boolean>(
     search.get("justSaved") === "1"
   );
@@ -396,12 +475,12 @@ export default function EditorPage() {
           replace: true,
           state: {},
         });
+        markClean();
       } else {
         setHasSavedImage(true);
         setSaveImageJustSucceeded(true);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
       setSavedMsg("Save failed");
       setSaveSuccess(false);
       setTimeout(() => setSavedMsg(null), 2500);
@@ -411,6 +490,15 @@ export default function EditorPage() {
   };
 
   const showSaveImageButton = !hasSavedImage && !!tempMedia?.file;
+
+  const viewKey = `${location.pathname}:${search.toString() || "blank"}`;
+
+  const confirmNavigate = (toPathname: string) => {
+    const leavingEditor = location.pathname.startsWith("/editor") && !toPathname.startsWith("/editor");
+    if (!leavingEditor) return true;
+    if (!dirty) return true;
+    return window.confirm("Changes you made may not be saved.");
+  };
 
   return (
     <div
@@ -428,14 +516,14 @@ export default function EditorPage() {
         collapsed={isOverlay ? false : collapsed}
         onToggle={() => (isOverlay ? setMobileOpen((o) => !o) : setCollapsed((v) => !v))}
         onClose={() => setMobileOpen(false)}
+        confirmNavigate={confirmNavigate}
       />
-
       <div
+        key={viewKey}
         className="grid min-h-screen grid-rows-[auto,1fr,auto] transition-[padding-left] duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
         style={{ paddingLeft: isOverlay ? 0 : "var(--sidebar-w)" }}
       >
         <Topbar isOverlay={isOverlay} mobileOpen={mobileOpen} onMobileToggle={() => setMobileOpen((o) => !o)} />
-
         <main className="h-full min-h-0 bg-black overflow-visible lg:overflow-auto pt-[var(--topbar-h)]" data-testid="editor-main">
           <section className="min-h-full flex flex-col lg:flex-row" data-testid="editor-sections">
             <div className="flex-1 min-h-full flex items-center justify-center border-r border-white/10 bg-black pb-[var(--footer-h)]" data-testid="editor-preview-pane">
@@ -479,7 +567,6 @@ export default function EditorPage() {
                 )}
               </div>
             </div>
-
             <div
               className="w-full lg:w-[400px] min-h-0 border-white/10 bg-black overflow-y-auto"
               style={{ height: "calc(100svh - var(--topbar-h) - var(--footer-h))" }}
@@ -516,10 +603,8 @@ export default function EditorPage() {
             </div>
           </section>
         </main>
-
         <Footer />
       </div>
-
       {savedMsg && (
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl bg-green-600/90 px-4 py-2 text-sm font-medium shadow-lg"
