@@ -83,3 +83,4 @@ npm run dev
 - [User Guide](./docs/user_guide.md): How to use the application
 - [User_Feedback](./docs/feedback.md): User feedback 
 - [Security & Risk Report](./docs/security_risk.md): Risk analysis and mitigations
+- [API Docs (Swagger UI)](http://localhost:5000/docs)
