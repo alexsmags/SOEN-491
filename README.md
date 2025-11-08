@@ -75,3 +75,10 @@ cd client
 npm run dev
 ```
 ### Frontend runs at: http://localhost:5173
+
+---
+
+## Documentation
+- [User Guide](./docs/user_guide.md): How to use the application
+- [User_Feedback](./docs/feedback.md): User feedback 
+- [Security & Risk Report](./docs/security_risk.md): Risk analysis and mitigations
