@@ -1,6 +1,7 @@
 # AI-Based Image Caption Generator (SOEN-491)
 
 A full-stack web application that uses an AI wrapper to generate captions for images, allowing users to edit captions in an editor page, share them to social media or various apps on Windows, and manage their saved content in a personal workspace.
+
 Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** backend, integrated with **Supabase** for authentication and local computer storage.
 
 ---
