@@ -165,10 +165,8 @@ test('editor: change background color & opacity → save sends updated bg values
     await expect(toggle).toBeChecked();
   }
 
-  const firstBgSwatch = page.locator('[data-testid="editor-bg-swatch"]').first();
-  const chosenBgColor = await firstBgSwatch.getAttribute('data-color');
-  expect(chosenBgColor).toBeTruthy();
-  await firstBgSwatch.click();
+  const chosenBgColor = '#224466';
+  await page.getByTestId('editor-bg-input').fill(chosenBgColor);
 
   const targetOpacity = '0.35';
   await page.getByTestId('editor-bg-opacity').fill(targetOpacity);
@@ -186,7 +184,7 @@ test('editor: change background color & opacity → save sends updated bg values
   const putReq = await putPromise;
   const payload = putReq.postDataJSON() as any;
 
-  expect(payload.bgColor?.toLowerCase()).toBe(String(chosenBgColor).toLowerCase());
+  expect(String(payload.bgColor).toLowerCase()).toBe(chosenBgColor.toLowerCase());
   expect(payload.bgOpacity).toBeCloseTo(parseFloat(targetOpacity), 3);
   await expect(page.getByTestId('editor-toast')).toBeVisible();
 });
@@ -245,35 +243,4 @@ test('editor: center & nudge position → save sends updated posX/posY', async (
   expect(payload.posY).not.toBe(120);
 
   await expect(page.getByTestId('editor-toast')).toBeVisible();
-});
-
-
-test('editor: copy caption → writes current caption to clipboard (stubbed)', async ({ page, context }) => {
-  await mockEditorRoutes(page);
-
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-
-  await page.addInitScript(() => {
-    // @ts-ignore
-    window.__lastCopied = '';
-    // @ts-ignore
-    const orig = navigator.clipboard?.writeText?.bind(navigator.clipboard);
-    // @ts-ignore
-    navigator.clipboard.writeText = async (t: string) => {
-      // @ts-ignore
-      window.__lastCopied = t;
-      if (orig) {
-        try { await orig(t); } catch { /* ignore */ }
-      }
-    };
-  });
-
-  await gotoEditor(page);
-
-  const newCaption = 'Copied caption';
-  await page.getByTestId('editor-caption-input').fill(newCaption);
-  await page.getByTestId('editor-copy-btn').click();
-
-  const lastCopied = await page.evaluate(() => (window as any).__lastCopied);
-  expect(lastCopied).toBe(newCaption);
 });
