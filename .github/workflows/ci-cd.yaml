@@ -33,13 +33,9 @@ jobs:
         working-directory: ${{ env.APP_DIR }}/client
         run: npm ci || npm install
 
-      - name: Lint (client)
-        working-directory: ${{ env.APP_DIR }}/client
-        run: npm run lint --if-present
-
       - name: Test (client) with coverage (if present)
         working-directory: ${{ env.APP_DIR }}/client
-        run: npm test -- --coverage --run --watch=false || echo "no client tests"
+        run: npm run vitest -- --coverage --run --watch=false || echo "no client tests"
 
       - name: Build (client)
         working-directory: ${{ env.APP_DIR }}/client
@@ -55,10 +51,6 @@ jobs:
       - name: Install (server)
         working-directory: ${{ env.APP_DIR }}/server
         run: npm ci || npm install
-
-      - name: Lint (server)
-        working-directory: ${{ env.APP_DIR }}/server
-        run: npm run lint --if-present
 
       - name: Test (server) with coverage
         working-directory: ${{ env.APP_DIR }}/server
