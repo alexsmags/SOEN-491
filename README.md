@@ -1,54 +1,77 @@
 # AI-Based Image Caption Generator (SOEN-491)
 
-A fullstack web application that generates natural language captions for images using AI.  
-Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** backend.
+A full-stack web application that uses an AI wrapper to generate captions for images, allowing users to edit captions in an editor page, share them to social media or various apps on Windows, and manage their saved content in a personal workspace.
+Built with a **React + Vite + Tailwind** frontend and a **Node.js + Express** backend, integrated with **Supabase** for authentication and local computer storage.
+
+---
+
+## Release Information
+**Current Version:** v1.0.0  
+**Release Date:** November 2025  
+
+**Key Features:**
+- AI-based automatic caption generation  
+- Caption style and tone customization  
+- Workspace for saving and editing captioned images  
+- Direct social media sharing via Windows sharing system.
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- React (with Vite)
+- React (Vite)
 - TailwindCSS
 - Axios
+- Auth.js
 
 ### Backend
 - Node.js + Express.js
 - Auth.js
 - Prisma ORM
-- Nodemon (dev)
+- Nodemon
 
 ### Database & Storage
 - PostgreSQL
-- Cloud Object Storage (AWS/Supabase/Cloudflare)
-- Prisma Adapter 
-
+- Local Object Storage (Constraint: cloud are paid services).
+- Prisma Adapter for Supabase
 
 ---
 
-## How to Run
+## How to Run the Project
 
-```bash
+bash
 # 1. Clone the repository
+```
 git clone <your-repo-url>
 cd <your-repo-folder>
+```
 
 # 2. Install dependencies
 
 # For client
+```
 cd client
 npm install
+```
 
 # For server
+```
 cd ../server
 npm install
+npx prisma generate
+```
 
 # 3. Start the backend
+```
 cd server
 npm run dev
-# Backend runs at: http://localhost:8080
+```
+### Backend runs at: http://localhost:5000
 
 # 4. Start the frontend (open a new terminal)
+```
 cd client
 npm run dev
-# Frontend runs at: http://localhost:5173 by default
+```
+### Frontend runs at: http://localhost:5173
